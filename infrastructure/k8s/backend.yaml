@@ -1,0 +1,119 @@
+# =============================================================================
+# CEWCE Kubernetes Deployment - Backend
+# =============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cewce-backend
+  labels:
+    app: cewce
+    component: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: cewce
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: cewce
+        component: backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/your-org/cewce/backend:latest
+          ports:
+            - containerPort: 4000
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "4000"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: cewce-secrets
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: cewce-secrets
+                  key: redis-url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: cewce-secrets
+                  key: jwt-secret
+            - name: CASPER_NODE_URL
+              value: "https://testnet.cspr.live/rpc"
+            - name: CASPER_NETWORK_NAME
+              value: "casper-test"
+            - name: WORKFLOW_CONTRACT_HASH
+              valueFrom:
+                configMapKeyRef:
+                  name: cewce-config
+                  key: workflow-contract-hash
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 4000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cewce-backend
+  labels:
+    app: cewce
+    component: backend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4000
+      targetPort: 4000
+  selector:
+    app: cewce
+    component: backend
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: cewce-backend-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cewce-backend
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

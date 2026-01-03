@@ -1,0 +1,115 @@
+# =============================================================================
+# CEWCE Kubernetes - Ingress Configuration
+# =============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cewce-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+spec:
+  tls:
+    - hosts:
+        - cewce.example.com
+        - api.cewce.example.com
+      secretName: cewce-tls
+  rules:
+    - host: cewce.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: cewce-frontend
+                port:
+                  number: 80
+    - host: api.cewce.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: cewce-backend
+                port:
+                  number: 4000
+
+---
+# =============================================================================
+# ConfigMap
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cewce-config
+data:
+  workflow-contract-hash: ""
+  casper-node-url: "https://testnet.cspr.live/rpc"
+  casper-network-name: "casper-test"
+
+---
+# =============================================================================
+# Secrets (template - use kubectl create secret or sealed-secrets in production)
+# =============================================================================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cewce-secrets
+type: Opaque
+stringData:
+  database-url: "postgresql://user:password@postgres:5432/cewce"
+  redis-url: "redis://:password@redis:6379"
+  jwt-secret: "your-super-secret-jwt-key"
+  operator-secret-key: ""
+
+---
+# =============================================================================
+# Network Policy
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cewce-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: cewce
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: cewce
+      ports:
+        - protocol: TCP
+          port: 4000
+        - protocol: TCP
+          port: 80
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: cewce
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app: postgres
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app: redis
+    # Allow external HTTPS (for Casper node)
+    - ports:
+        - protocol: TCP
+          port: 443

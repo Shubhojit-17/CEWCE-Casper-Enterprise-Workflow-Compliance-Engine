@@ -1,0 +1,66 @@
+# =============================================================================
+# CEWCE Backend Dockerfile
+# =============================================================================
+# Multi-stage build for optimized production image
+# =============================================================================
+
+# Stage 1: Build
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies for native modules
+RUN apk add --no-cache python3 make g++
+
+# Copy package files
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Build TypeScript
+RUN npm run build
+
+# Stage 2: Production
+FROM node:18-alpine AS production
+
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S cewce -u 1001
+
+# Copy package files
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install production dependencies only
+RUN npm ci --only=production && \
+    npx prisma generate && \
+    npm cache clean --force
+
+# Copy built application
+COPY --from=builder /app/dist ./dist
+
+# Set ownership
+RUN chown -R cewce:nodejs /app
+
+# Switch to non-root user
+USER cewce
+
+# Expose port
+EXPOSE 4000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:4000/api/health || exit 1
+
+# Start application
+CMD ["node", "dist/index.js"]

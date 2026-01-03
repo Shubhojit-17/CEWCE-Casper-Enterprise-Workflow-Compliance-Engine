@@ -1,0 +1,30 @@
+[package]
+name = "workflow-contract"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "CEWCE Workflow Smart Contract for Casper Network"
+
+[dependencies]
+# Casper Smart Contract SDK v5.x for Casper 2.0 network
+# Reference: https://docs.rs/casper-contract/latest/casper_contract/
+casper-contract = { version = "5.1.1", features = ["no-std-helpers"] }
+casper-types = "6.1.0"
+
+# Pin transitive dependency to avoid edition 2024 requirement
+base64ct = "=1.6.0"
+
+[features]
+default = []
+
+[[bin]]
+name = "workflow-contract"
+path = "src/main.rs"
+bench = false
+doctest = false
+test = false
+
+[profile.release]
+lto = true
+opt-level = "z"
+codegen-units = 1

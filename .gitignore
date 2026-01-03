@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+target/
+
+# Build outputs
+dist/
+build/
+*.wasm
+
+# Environment files (secrets)
+.env
+.env.local
+.env.production
+
+# Casper keys (SENSITIVE - never commit!)
+casper_keys/
+casper_deployer/
+*.pem
+secret_key*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# Docker
+docker-compose.override.yml
+
+# Rust/Cargo
+contracts/target/
+**/*.rs.bk
+Cargo.lock
+
+# TypeScript
+*.tsbuildinfo
+
+# Temporary files
+tmp/
+temp/
