@@ -25,6 +25,16 @@ interface WalletState {
   checkWalletAvailability: () => { signer: boolean; wallet: boolean };
 }
 
+// Casper Wallet Provider interface (SDK v1.5+)
+interface CasperWalletProvider {
+  requestConnection: () => Promise<boolean>;
+  disconnectFromSite: () => Promise<boolean>;
+  getActivePublicKey: () => Promise<string>;
+  isConnected: () => Promise<boolean>;
+  signMessage: (message: string, signingPublicKeyHex: string) => Promise<string>;
+  sign: (deployJson: string, signingPublicKeyHex: string) => Promise<{ signature: string }>;
+}
+
 // Check if old Casper Signer is available (casperlabsHelper)
 const getCasperSigner = (): unknown | null => {
   const w = window as unknown as { casperlabsHelper?: unknown };
@@ -34,25 +44,47 @@ const getCasperSigner = (): unknown | null => {
   return null;
 };
 
-// Check if new Casper Wallet is available (CasperWalletProvider)
-// CasperWalletProvider is a FUNCTION that returns the provider instance
-const getCasperWallet = (): {
-  requestConnection: () => Promise<boolean>;
-  disconnectFromSite: () => Promise<boolean>;
-  getActivePublicKey: () => Promise<string>;
-  isConnected: () => Promise<boolean>;
-  signMessage: (message: string, signingPublicKeyHex: string) => Promise<string>;
-  sign: (deployJson: string, signingPublicKeyHex: string) => Promise<{ signature: string }>;
-} | null => {
-  const w = window as unknown as { CasperWalletProvider?: () => unknown };
+// Check if new Casper Wallet is available
+const getCasperWallet = (): CasperWalletProvider | null => {
+  const w = window as unknown as { 
+    CasperWalletProvider?: () => CasperWalletProvider;
+  };
+  
+  // CasperWalletProvider is injected by the extension as a function
   if (typeof w.CasperWalletProvider === 'function') {
     try {
-      return w.CasperWalletProvider() as ReturnType<typeof getCasperWallet>;
-    } catch {
-      return null;
+      const provider = w.CasperWalletProvider();
+      return provider;
+    } catch (e) {
+      console.error('Error initializing CasperWalletProvider:', e);
     }
   }
+  
   return null;
+};
+
+// Helper to wait for wallet to be ready
+const waitForWallet = (timeout = 3000): Promise<CasperWalletProvider | null> => {
+  return new Promise((resolve) => {
+    const wallet = getCasperWallet();
+    if (wallet) {
+      resolve(wallet);
+      return;
+    }
+    
+    // Wait for contentscript to inject the provider
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const wallet = getCasperWallet();
+      if (wallet) {
+        clearInterval(interval);
+        resolve(wallet);
+      } else if (Date.now() - startTime > timeout) {
+        clearInterval(interval);
+        resolve(null);
+      }
+    }, 100);
+  });
 };
 
 export const useWalletStore = create<WalletState>((set, get) => ({
@@ -75,28 +107,46 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     set({ isConnecting: true, error: null });
 
     try {
-      // Try new Casper Wallet first
-      const casperWallet = getCasperWallet();
+      // Wait for wallet provider to be available
+      const casperWallet = await waitForWallet(3000);
+      
+      console.log('Casper Wallet provider:', casperWallet);
 
       if (casperWallet) {
-        // Use new Casper Wallet API
+        console.log('Using Casper Wallet API');
+        
         // First check if already connected
-        const alreadyConnected = await casperWallet.isConnected();
+        let alreadyConnected = false;
+        try {
+          alreadyConnected = await casperWallet.isConnected();
+          console.log('Already connected:', alreadyConnected);
+        } catch (e) {
+          console.log('isConnected check failed:', e);
+        }
         
         if (!alreadyConnected) {
+          console.log('Requesting connection - this should open the wallet popup...');
           // Request connection - this will prompt the user
-          const connected = await casperWallet.requestConnection();
-          
-          if (!connected) {
-            throw new Error('Connection rejected. Please unlock your wallet and try again.');
+          try {
+            const connected = await casperWallet.requestConnection();
+            console.log('Connection result:', connected);
+            
+            if (!connected) {
+              throw new Error('Connection rejected. Please approve the connection in your Casper Wallet.');
+            }
+          } catch (e) {
+            console.error('requestConnection error:', e);
+            throw new Error('Failed to connect. Please make sure Casper Wallet is unlocked and try again.');
           }
         }
 
         // Get active public key
+        console.log('Getting active public key...');
         const publicKeyHex = await casperWallet.getActivePublicKey();
+        console.log('Public key:', publicKeyHex);
 
         if (!publicKeyHex) {
-          throw new Error('Failed to get public key from Casper Wallet');
+          throw new Error('Failed to get public key from Casper Wallet. Please unlock your wallet.');
         }
 
         const publicKey = CLPublicKey.fromHex(publicKeyHex);

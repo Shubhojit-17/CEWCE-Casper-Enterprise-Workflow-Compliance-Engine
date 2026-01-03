@@ -80,7 +80,7 @@ export function WalletPage() {
                 <XCircleIcon className="h-5 w-5 text-red-500 flex-shrink-0" />
                 <div>
                   <p className="text-sm text-red-700">{error}</p>
-                  {error.includes('not found') && (
+                  {(error.includes('not found') || error.includes('not installed')) && (
                     <p className="text-sm text-red-600 mt-1">
                       <a
                         href="https://www.casperwallet.io/"
@@ -182,25 +182,38 @@ export function WalletPage() {
               <p className="mt-2 text-sm text-gray-500 max-w-md mx-auto">
                 Connect your Casper Wallet to sign transactions and interact with
                 the blockchain. Make sure you have the Casper Wallet extension
-                installed.
+                installed and unlocked.
               </p>
-              <button
-                onClick={handleConnect}
-                disabled={isConnecting}
-                className="mt-6 btn-primary"
-              >
-                {isConnecting ? (
-                  <>
-                    <ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" />
-                    Connecting...
-                  </>
-                ) : (
-                  <>
-                    <WalletIcon className="h-5 w-5 mr-2" />
-                    Connect Casper Wallet
-                  </>
-                )}
-              </button>
+              <div className="mt-6 space-y-3">
+                <button
+                  onClick={handleConnect}
+                  disabled={isConnecting}
+                  className="btn-primary"
+                >
+                  {isConnecting ? (
+                    <>
+                      <ArrowPathIcon className="h-5 w-5 mr-2 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <WalletIcon className="h-5 w-5 mr-2" />
+                      Connect Casper Wallet
+                    </>
+                  )}
+                </button>
+                <p className="text-xs text-gray-400">
+                  Don't have Casper Wallet?{' '}
+                  <a
+                    href="https://www.casperwallet.io/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-enterprise-primary hover:underline"
+                  >
+                    Download here →
+                  </a>
+                </p>
+              </div>
             </div>
           )}
         </div>

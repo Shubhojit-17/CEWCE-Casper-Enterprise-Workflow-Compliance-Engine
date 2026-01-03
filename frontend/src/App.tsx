@@ -17,6 +17,7 @@ import { TemplatesPage } from './pages/templates/TemplatesPage';
 import { AuditLogPage } from './pages/audit/AuditLogPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { WalletPage } from './pages/wallet/WalletPage';
+import { UsersPage } from './pages/users/UsersPage';
 
 // Protected Route Wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -96,6 +97,7 @@ function App() {
           <Route path="workflows/:id" element={<WorkflowDetailPage />} />
           <Route path="templates" element={<TemplatesPage />} />
           <Route path="audit" element={<AuditLogPage />} />
+          <Route path="users" element={<UsersPage />} />
           <Route path="wallet" element={<WalletPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

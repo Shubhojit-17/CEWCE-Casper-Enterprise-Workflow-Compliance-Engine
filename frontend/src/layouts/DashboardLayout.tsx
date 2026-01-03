@@ -17,12 +17,14 @@ import {
   ChevronDownIcon,
   ArrowRightOnRectangleIcon,
   UserCircleIcon,
+  UsersIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../stores/auth';
 import { useWalletStore } from '../stores/wallet';
 import { cn, truncateHash } from '../lib/utils';
 
-const navigation = [
+// Navigation items - Users is only shown to ADMIN
+const baseNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Workflows', href: '/workflows', icon: DocumentDuplicateIcon },
   { name: 'Templates', href: '/templates', icon: ClipboardDocumentListIcon },
@@ -31,12 +33,22 @@ const navigation = [
   { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
 ];
 
+const adminNavigation = [
+  { name: 'Users', href: '/users', icon: UsersIcon },
+];
+
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { publicKey, isConnected, balance } = useWalletStore();
+
+  // Build navigation based on user roles
+  const isAdmin = user?.roles?.includes('ADMIN');
+  const navigation = isAdmin 
+    ? [...baseNavigation.slice(0, 4), ...adminNavigation, ...baseNavigation.slice(4)]
+    : baseNavigation;
 
   const handleLogout = () => {
     logout();

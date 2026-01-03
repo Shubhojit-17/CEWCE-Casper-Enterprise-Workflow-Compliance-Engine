@@ -16,7 +16,7 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   lastLoginAt: string | null;
-  roles?: UserRole[];
+  roles?: string[];  // Backend returns role names as strings
 }
 
 export interface Role {
