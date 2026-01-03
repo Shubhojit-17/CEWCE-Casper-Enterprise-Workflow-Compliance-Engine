@@ -42,12 +42,21 @@ const DEFAULT_TRANSITIONS = [
 export function TemplatesPage() {
   const queryClient = useQueryClient();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<WorkflowTemplate | null>(null);
 
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors },
+  } = useForm<CreateTemplateForm>();
+
+  const {
+    register: registerEdit,
+    handleSubmit: handleEditSubmit,
+    reset: resetEdit,
+    formState: { errors: editErrors },
   } = useForm<CreateTemplateForm>();
 
   // Fetch templates
@@ -119,8 +128,42 @@ export function TemplatesPage() {
     },
   });
 
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<CreateTemplateForm> }) => {
+      const response = await api.patch(`/workflows/${id}`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Template updated');
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      setIsEditModalOpen(false);
+      setEditingTemplate(null);
+      resetEdit();
+    },
+    onError: () => {
+      toast.error('Failed to update template');
+    },
+  });
+
   const onSubmit = (data: CreateTemplateForm) => {
     createMutation.mutate(data);
+  };
+
+  const onEditSubmit = (data: CreateTemplateForm) => {
+    if (!editingTemplate) return;
+    updateMutation.mutate({ id: editingTemplate.id, data });
+  };
+
+  const openEditModal = (template: WorkflowTemplate) => {
+    setEditingTemplate(template);
+    resetEdit({
+      name: template.name,
+      description: template.description || '',
+      slaDays: template.slaDays || 7,
+      escalationDays: template.escalationDays || 14,
+    });
+    setIsEditModalOpen(true);
   };
 
   const getStatusBadge = (status: TemplateStatus) => {
@@ -208,7 +251,11 @@ export function TemplatesPage() {
                       >
                         Publish
                       </button>
-                      <button className="btn-secondary btn-sm">
+                      <button 
+                        onClick={() => openEditModal(template)}
+                        className="btn-secondary btn-sm"
+                        title="Edit template"
+                      >
                         <PencilIcon className="h-4 w-4" />
                       </button>
                       <button
@@ -375,6 +422,135 @@ export function TemplatesPage() {
                         className="btn-primary flex-1"
                       >
                         {createMutation.isPending ? 'Creating...' : 'Create Template'}
+                      </button>
+                    </div>
+                  </form>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
+
+      {/* Edit Modal */}
+      <Transition appear show={isEditModalOpen} as={Fragment}>
+        <Dialog
+          as="div"
+          className="relative z-50"
+          onClose={() => setIsEditModalOpen(false)}
+        >
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-25" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
+                  <Dialog.Title
+                    as="h3"
+                    className="text-lg font-medium text-gray-900"
+                  >
+                    Edit Template
+                  </Dialog.Title>
+
+                  <form onSubmit={handleEditSubmit(onEditSubmit)} className="mt-4 space-y-4">
+                    <div>
+                      <label htmlFor="edit-name" className="label">
+                        Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="edit-name"
+                        type="text"
+                        className="input"
+                        placeholder="e.g., Document Approval"
+                        {...registerEdit('name', { required: 'Name is required' })}
+                      />
+                      {editErrors.name && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {editErrors.name.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor="edit-description" className="label">
+                        Description
+                      </label>
+                      <textarea
+                        id="edit-description"
+                        rows={3}
+                        className="input"
+                        placeholder="Describe the workflow purpose..."
+                        {...registerEdit('description')}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="edit-slaDays" className="label">
+                          SLA (days)
+                        </label>
+                        <input
+                          id="edit-slaDays"
+                          type="number"
+                          min="1"
+                          className="input"
+                          {...registerEdit('slaDays', {
+                            required: true,
+                            valueAsNumber: true,
+                            min: 1,
+                          })}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="edit-escalationDays" className="label">
+                          Escalation (days)
+                        </label>
+                        <input
+                          id="edit-escalationDays"
+                          type="number"
+                          min="1"
+                          className="input"
+                          {...registerEdit('escalationDays', {
+                            required: true,
+                            valueAsNumber: true,
+                            min: 1,
+                          })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                      <button
+                        type="button"
+                        className="btn-secondary flex-1"
+                        onClick={() => setIsEditModalOpen(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={updateMutation.isPending}
+                        className="btn-primary flex-1"
+                      >
+                        {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
                       </button>
                     </div>
                   </form>

@@ -2,7 +2,7 @@
 // Workflow Detail Page
 // =============================================================================
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, Transition } from '@headlessui/react';
@@ -15,6 +15,9 @@ import {
   ExclamationTriangleIcon,
   DocumentTextIcon,
   ClockIcon,
+  ArrowUpTrayIcon,
+  TrashIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
@@ -36,18 +39,29 @@ interface AvailableTransition {
   label: string;
 }
 
+interface WorkflowDocument {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  checksum: string;
+  createdAt: string;
+}
+
 export function WorkflowDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isConnected, publicKey } = useWalletStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isTransitionModalOpen, setIsTransitionModalOpen] = useState(false);
   const [selectedTransition, setSelectedTransition] = useState<AvailableTransition | null>(null);
   const [comment, setComment] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
 
   // Check for valid ID - must exist and not be "undefined" string
-  const isValidId = id && id !== 'undefined';
+  const isValidId = Boolean(id && id !== 'undefined');
 
   // Fetch workflow instance
   const { data: workflow, isLoading: workflowLoading, error: workflowError } = useQuery({
@@ -63,7 +77,7 @@ export function WorkflowDetailPage() {
   });
 
   // Fetch available transitions
-  const { data: availableTransitions } = useQuery({
+  const { data: availableTransitions = [] } = useQuery<AvailableTransition[]>({
     queryKey: ['workflow-transitions', id],
     queryFn: async () => {
       const response = await api.get<{ data: { transitions: AvailableTransition[] } }>(
@@ -73,6 +87,54 @@ export function WorkflowDetailPage() {
     },
     enabled: isValidId && !!workflow,
     retry: false,
+  });
+
+  // Fetch documents
+  const { data: documents = [] } = useQuery<WorkflowDocument[]>({
+    queryKey: ['workflow-documents', id],
+    queryFn: async () => {
+      const response = await api.get<{ data: { documents: WorkflowDocument[] } }>(
+        `/workflow-instances/${id}/documents`
+      );
+      return response.data.data.documents || [];
+    },
+    enabled: isValidId && !!workflow,
+    retry: false,
+  });
+
+  // Upload document mutation
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const content = await fileToBase64(file);
+      const response = await api.post(`/workflow-instances/${id}/documents`, {
+        name: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        content,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Document uploaded successfully');
+      queryClient.invalidateQueries({ queryKey: ['workflow-documents', id] });
+    },
+    onError: () => {
+      toast.error('Failed to upload document');
+    },
+  });
+
+  // Delete document mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (documentId: string) => {
+      const response = await api.delete(`/workflow-instances/${id}/documents/${documentId}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Document deleted');
+      queryClient.invalidateQueries({ queryKey: ['workflow-documents', id] });
+    },
+    onError: () => {
+      toast.error('Failed to delete document');
+    },
   });
 
   // Transition mutation
@@ -111,6 +173,82 @@ export function WorkflowDetailPage() {
       toState: selectedTransition.toState,
       comment: comment || undefined,
     });
+  };
+
+  // Helper function to convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove data URL prefix (e.g., "data:application/pdf;base64,")
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+    });
+  };
+
+  // Handle file upload
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File too large. Maximum size is 10MB.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      await uploadMutation.mutateAsync(file);
+    } finally {
+      setIsUploading(false);
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Handle document download
+  const handleDownload = async (doc: WorkflowDocument) => {
+    try {
+      const response = await api.get<{ data: { document: WorkflowDocument & { content: string } } }>(
+        `/workflow-instances/${id}/documents/${doc.id}`
+      );
+      const content = response.data.data.document.content;
+      
+      // Convert base64 to blob
+      const byteCharacters = atob(content);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: doc.mimeType });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.name;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      toast.error('Failed to download document');
+    }
+  };
+
+  // Format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   if (!isValidId) {
@@ -444,15 +582,62 @@ export function WorkflowDetailPage() {
           <div className="card">
             <div className="card-header flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900">Documents</h2>
-              <button className="text-sm text-enterprise-primary hover:underline">
-                Upload
-              </button>
+              <label className="text-sm text-enterprise-primary hover:underline cursor-pointer flex items-center gap-1">
+                <ArrowUpTrayIcon className="h-4 w-4" />
+                {isUploading ? 'Uploading...' : 'Upload'}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  disabled={isUploading}
+                />
+              </label>
             </div>
             <div className="card-body">
-              <div className="text-center py-4 text-gray-500">
-                <DocumentTextIcon className="h-8 w-8 mx-auto text-gray-400" />
-                <p className="mt-2 text-sm">No documents attached</p>
-              </div>
+              {documents && documents.length > 0 ? (
+                <ul className="divide-y divide-gray-200">
+                  {documents.map((doc) => (
+                    <li key={doc.id} className="py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <DocumentTextIcon className="h-6 w-6 text-gray-400" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{doc.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {formatFileSize(doc.size)} • {formatRelativeTime(doc.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleDownload(doc)}
+                          className="p-1 text-gray-400 hover:text-enterprise-primary"
+                          title="Download"
+                        >
+                          <ArrowDownTrayIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm('Delete this document?')) {
+                              deleteMutation.mutate(doc.id);
+                            }
+                          }}
+                          className="p-1 text-gray-400 hover:text-red-500"
+                          title="Delete"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="text-center py-4 text-gray-500">
+                  <DocumentTextIcon className="h-8 w-8 mx-auto text-gray-400" />
+                  <p className="mt-2 text-sm">No documents attached</p>
+                  <p className="text-xs text-gray-400 mt-1">Click Upload to add documents</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

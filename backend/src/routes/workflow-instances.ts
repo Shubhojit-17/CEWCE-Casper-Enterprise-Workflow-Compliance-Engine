@@ -748,3 +748,210 @@ workflowInstancesRouter.get(
     }
   }
 );
+// =============================================================================
+// Document Management
+// =============================================================================
+
+/**
+ * Get documents for a workflow instance.
+ */
+workflowInstancesRouter.get(
+  '/:id/documents',
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+
+      const instance = await prisma.workflowInstance.findFirst({
+        where: { id },
+        include: { organization: true },
+      });
+
+      if (!instance) {
+        throw createError('Workflow instance not found', 404, 'NOT_FOUND');
+      }
+
+      const documents = await prisma.workflowDocument.findMany({
+        where: { instanceId: id },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      res.json({
+        success: true,
+        data: { documents },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * Upload a document to a workflow instance.
+ * Uses base64 encoding for simplicity (no external storage required).
+ */
+workflowInstancesRouter.post(
+  '/:id/documents',
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const { name, mimeType, content } = req.body;
+
+      if (!name || !mimeType || !content) {
+        throw createError('name, mimeType, and content are required', 400, 'VALIDATION_ERROR');
+      }
+
+      const instance = await prisma.workflowInstance.findFirst({
+        where: { id },
+      });
+
+      if (!instance) {
+        throw createError('Workflow instance not found', 404, 'NOT_FOUND');
+      }
+
+      // Decode base64 to calculate size and checksum
+      const buffer = Buffer.from(content, 'base64');
+      const size = buffer.length;
+      
+      // Max 10MB
+      if (size > 10 * 1024 * 1024) {
+        throw createError('File too large. Maximum size is 10MB.', 400, 'FILE_TOO_LARGE');
+      }
+
+      // Calculate SHA-256 checksum
+      const crypto = await import('crypto');
+      const checksum = crypto.createHash('sha256').update(buffer).digest('hex');
+
+      // Store the content as base64 in the storageKey field (simple approach)
+      const document = await prisma.workflowDocument.create({
+        data: {
+          instanceId: id,
+          uploaderId: req.user!.userId,
+          name,
+          mimeType,
+          size,
+          storageKey: content, // Store base64 content directly
+          checksum,
+        },
+      });
+
+      // Log the upload
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.userId,
+          action: 'DOCUMENT_UPLOAD',
+          resource: 'document',
+          resourceId: document.id,
+          details: {
+            workflowInstanceId: id,
+            documentName: name,
+            mimeType,
+            size,
+            checksum,
+          },
+        },
+      });
+
+      res.status(201).json({
+        success: true,
+        data: {
+          document: {
+            id: document.id,
+            name: document.name,
+            mimeType: document.mimeType,
+            size: document.size,
+            checksum: document.checksum,
+            createdAt: document.createdAt,
+          },
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * Download a document.
+ */
+workflowInstancesRouter.get(
+  '/:id/documents/:documentId',
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id, documentId } = req.params;
+
+      const document = await prisma.workflowDocument.findFirst({
+        where: { id: documentId, instanceId: id },
+      });
+
+      if (!document) {
+        throw createError('Document not found', 404, 'NOT_FOUND');
+      }
+
+      res.json({
+        success: true,
+        data: {
+          document: {
+            id: document.id,
+            name: document.name,
+            mimeType: document.mimeType,
+            size: document.size,
+            checksum: document.checksum,
+            content: document.storageKey, // Return base64 content
+            createdAt: document.createdAt,
+          },
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * Delete a document.
+ */
+workflowInstancesRouter.delete(
+  '/:id/documents/:documentId',
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id, documentId } = req.params;
+
+      const document = await prisma.workflowDocument.findFirst({
+        where: { id: documentId, instanceId: id },
+      });
+
+      if (!document) {
+        throw createError('Document not found', 404, 'NOT_FOUND');
+      }
+
+      await prisma.workflowDocument.delete({
+        where: { id: documentId },
+      });
+
+      // Log the deletion
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.userId,
+          action: 'DOCUMENT_DELETE',
+          resource: 'document',
+          resourceId: documentId,
+          details: {
+            workflowInstanceId: id,
+            documentName: document.name,
+          },
+        },
+      });
+
+      res.json({
+        success: true,
+        data: { message: 'Document deleted successfully' },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);

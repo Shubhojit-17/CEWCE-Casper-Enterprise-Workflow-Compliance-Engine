@@ -269,7 +269,12 @@ export function SettingsPage() {
                         </p>
                       </div>
                     </div>
-                    <button className="btn-secondary">Enable 2FA</button>
+                    <button 
+                      className="btn-secondary"
+                      onClick={() => toast('2FA setup coming soon! Use your Casper wallet for secure authentication.', { icon: '🔐' })}
+                    >
+                      Enable 2FA
+                    </button>
                   </div>
                 </div>
               </div>
