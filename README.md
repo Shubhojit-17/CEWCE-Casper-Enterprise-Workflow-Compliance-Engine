@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-### Non-Technical Summary
+###Summary
 
 CEWCE is an enterprise-grade workflow and compliance platform built on the Casper blockchain. It enables organizations to automate complex approval processes, enforce governance policies, and maintain immutable audit trails for regulatory compliance.
 
