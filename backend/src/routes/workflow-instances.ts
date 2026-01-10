@@ -452,6 +452,22 @@ workflowInstancesRouter.post(
         throw createError('Workflow already completed', 400, 'WORKFLOW_COMPLETED');
       }
 
+      // Check for existing pending transitions to prevent duplicates
+      const pendingTransition = await prisma.workflowTransition.findFirst({
+        where: {
+          instanceId: id,
+          status: 'PENDING',
+        },
+      });
+
+      if (pendingTransition) {
+        throw createError(
+          'A transition is already pending. Please wait for it to complete.',
+          400,
+          'TRANSITION_PENDING'
+        );
+      }
+
       // Check permission
       const canPerform = await canTransition(
         req.user!.userId,
@@ -674,6 +690,59 @@ workflowInstancesRouter.post(
           },
         });
       }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * Cancel a pending transition.
+ */
+workflowInstancesRouter.post(
+  '/:id/transition/:transitionId/cancel',
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id, transitionId } = req.params;
+
+      const instance = await prisma.workflowInstance.findUnique({
+        where: { id },
+      });
+
+      if (!instance) {
+        throw createError('Workflow instance not found', 404, 'NOT_FOUND');
+      }
+
+      const transition = await prisma.workflowTransition.findUnique({
+        where: { id: transitionId },
+      });
+
+      if (!transition || transition.instanceId !== id) {
+        throw createError('Transition not found', 404, 'TRANSITION_NOT_FOUND');
+      }
+
+      if (transition.status !== 'PENDING') {
+        throw createError('Only pending transitions can be cancelled', 400, 'INVALID_STATUS');
+      }
+
+      // Update transition status to CANCELLED
+      await prisma.workflowTransition.update({
+        where: { id: transitionId },
+        data: {
+          status: 'FAILED',
+          error: 'Cancelled by user',
+        },
+      });
+
+      res.json({
+        success: true,
+        data: {
+          instanceId: id,
+          transitionId,
+          message: 'Transition cancelled successfully',
+        },
+      });
     } catch (error) {
       next(error);
     }

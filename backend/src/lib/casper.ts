@@ -152,11 +152,45 @@ export async function getAccountInfo(publicKeyHex: string): Promise<unknown> {
 
 /**
  * Get the account balance for a public key.
+ * Uses Casper 2.x query_balance RPC method.
  */
 export async function getAccountBalance(publicKeyHex: string): Promise<string> {
-  const publicKey = CLPublicKey.fromHex(publicKeyHex);
-  const balance = await casperClient.balanceOfByPublicKey(publicKey);
-  return balance.toString();
+  try {
+    logger.info(`Fetching balance for public key: ${publicKeyHex}`);
+    
+    // Use query_balance RPC method (Casper 2.x compatible)
+    const response = await fetch(config.casperNodeUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'query_balance',
+        id: Date.now(),
+        params: {
+          purse_identifier: {
+            main_purse_under_public_key: publicKeyHex
+          }
+        }
+      })
+    });
+    
+    const data = await response.json() as { 
+      result?: { balance?: string }; 
+      error?: { message?: string } 
+    };
+    
+    if (data.error) {
+      logger.error(`RPC error fetching balance: ${data.error.message}`);
+      throw new Error(data.error.message || 'Failed to fetch balance');
+    }
+    
+    const balance = data.result?.balance || '0';
+    logger.info(`Balance fetched successfully: ${balance}`);
+    return balance;
+  } catch (error) {
+    logger.error(`Error fetching balance for ${publicKeyHex}:`, error);
+    throw error;
+  }
 }
 
 /**
@@ -211,10 +245,13 @@ export function buildTransitionStateDeploy(
 
   const senderPublicKey = CLPublicKey.fromHex(senderPublicKeyHex);
 
+  // Convert bigint to string for CLValueBuilder.u64 to avoid Math.sign() error
+  const actorRoleStr = actorRole.toString();
+
   const args = RuntimeArgs.fromMap({
     workflow_id: CLValueBuilder.u256(workflowId),
     to_state: CLValueBuilder.u8(toState),
-    actor_role: CLValueBuilder.u64(actorRole),
+    actor_role: CLValueBuilder.u64(actorRoleStr),
     comment_hash: new CLByteArray(commentHash),
   });
 
@@ -233,9 +270,23 @@ export function buildTransitionStateDeploy(
  * Submit a signed deploy to the network.
  */
 export async function submitDeploy(signedDeployJson: unknown): Promise<string> {
-  const deploy = DeployUtil.deployFromJson(signedDeployJson as { deploy: unknown });
+  // Handle various input formats from wallet signing
+  let deployInput = signedDeployJson as Record<string, unknown>;
+  
+  // Log the input for debugging
+  logger.debug({ signedDeployJson: JSON.stringify(deployInput).substring(0, 500) }, 'submitDeploy input');
+  
+  // If wrapped in { deploy: {...} }, use as-is
+  // If just the deploy object, wrap it
+  if (!deployInput.deploy && deployInput.hash) {
+    // It's a raw deploy object without the wrapper
+    deployInput = { deploy: deployInput };
+  }
+  
+  const deploy = DeployUtil.deployFromJson(deployInput as { deploy: unknown });
   
   if (!deploy.ok) {
+    logger.error({ error: deploy.val, input: JSON.stringify(deployInput).substring(0, 500) }, 'Failed to parse deploy JSON');
     throw new Error('Invalid deploy JSON');
   }
 
@@ -283,6 +334,7 @@ export async function waitForDeploy(
 /**
  * Query workflow state from the contract.
  * Note: This requires the contract to be deployed and hash configured.
+ * Includes RPC failsafe handling for network issues.
  */
 export async function queryWorkflowState(workflowId: string): Promise<unknown> {
   if (!contractClient) {
@@ -293,22 +345,35 @@ export async function queryWorkflowState(workflowId: string): Promise<unknown> {
     throw new Error('Contract hash not configured');
   }
 
-  const stateRootHash = await getStateRootHash();
-  
-  // Query the contract's dictionary for workflow data
-  // The exact implementation depends on the contract's storage layout
-  try {
-    const result = await casperService.getDictionaryItemByName(
-      stateRootHash,
-      config.workflowContractHash,
-      'workflows',
-      workflowId
-    );
-    return result;
-  } catch (error) {
-    logger.warn({ workflowId, error }, 'Failed to query workflow state');
-    return null;
+  // RPC failsafe: retry with exponential backoff
+  const maxRetries = 3;
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const stateRootHash = await getStateRootHash();
+      
+      // Query the contract's dictionary for workflow data
+      const result = await casperService.getDictionaryItemByName(
+        stateRootHash,
+        config.workflowContractHash,
+        'workflows',
+        workflowId
+      );
+      return result;
+    } catch (error) {
+      lastError = error as Error;
+      logger.warn({ workflowId, attempt, error: lastError.message }, 'RPC query failed, retrying...');
+      
+      // Exponential backoff: 1s, 2s, 4s
+      if (attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+      }
+    }
   }
+
+  logger.error({ workflowId, error: lastError?.message }, 'Failed to query workflow state after retries');
+  return null;
 }
 
 /**

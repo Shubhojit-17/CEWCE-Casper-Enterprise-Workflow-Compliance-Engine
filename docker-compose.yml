@@ -60,17 +60,23 @@ services:
     container_name: cewce-backend
     restart: unless-stopped
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
+      NODE_ENV: production
       PORT: 4000
+      HOST: 0.0.0.0
       DATABASE_URL: postgresql://${POSTGRES_USER:-cewce}:${POSTGRES_PASSWORD:-cewce_secret_password}@postgres:5432/${POSTGRES_DB:-cewce}?schema=public
-      REDIS_URL: redis://:${REDIS_PASSWORD:-cewce_redis_password}@redis:6379
-      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      CASPER_NODE_URL: ${CASPER_NODE_URL:-https://testnet.cspr.live/rpc}
-      CASPER_NETWORK_NAME: ${CASPER_NETWORK_NAME:-casper-test}
-      CASPER_CHAIN_NAME: ${CASPER_CHAIN_NAME:-casper-test}
-      WORKFLOW_CONTRACT_HASH: ${WORKFLOW_CONTRACT_HASH:-}
-      OPERATOR_SECRET_KEY: ${OPERATOR_SECRET_KEY:-}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-cewce_redis_password}
+      JWT_SECRET: ${JWT_SECRET:-cewce-dev-jwt-secret-change-in-production-2026}
+      JWT_EXPIRY: ${JWT_EXPIRY:-24h}
+      # Real Casper Testnet - NO MOCKS
+      CASPER_NODE_URL: http://65.109.83.79:7777/rpc
+      CASPER_CHAIN_NAME: casper-test
+      # Deployed contract
+      WORKFLOW_CONTRACT_HASH: ${WORKFLOW_CONTRACT_HASH:-hash-f050d3d06be9c182d46ef6edc261daa836e9612b2b42dbbdb25325e682f4a515}
+      # Sidecar disabled - using RPC fallback mode
+      CASPER_USE_SIDECAR: "false"
+      CASPER_SSE_ENABLED: "false"
       LOG_LEVEL: ${LOG_LEVEL:-info}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
     ports:
@@ -81,7 +87,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/api/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3

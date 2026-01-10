@@ -26,9 +26,14 @@ const configSchema = z.object({
   workflowContractHash: z.string().optional(),
   workflowContractPackageHash: z.string().optional(),
 
-  // Casper Sidecar (OPTIONAL - deferred to post-hackathon)
-  // System operates in RPC-only mode without Sidecar
+  // Casper Sidecar Configuration
+  // When enabled, Sidecar is used as primary RPC with automatic fallback to node
   casperSidecarUrl: z.string().optional(),
+  casperSidecarRestUrl: z.string().optional(),
+  casperSidecarSseUrl: z.string().optional(),
+  casperSidecarAdminUrl: z.string().optional(),
+  casperUseSidecar: z.coerce.boolean().default(false),
+  casperSseEnabled: z.coerce.boolean().default(false),
 
   // Authentication
   jwtSecret: z.string().min(32),
@@ -60,6 +65,11 @@ function loadConfig() {
     workflowContractHash: process.env.WORKFLOW_CONTRACT_HASH,
     workflowContractPackageHash: process.env.WORKFLOW_CONTRACT_PACKAGE_HASH,
     casperSidecarUrl: process.env.CASPER_SIDECAR_URL,
+    casperSidecarRestUrl: process.env.CASPER_SIDECAR_REST_URL,
+    casperSidecarSseUrl: process.env.CASPER_SIDECAR_SSE_URL,
+    casperSidecarAdminUrl: process.env.CASPER_SIDECAR_ADMIN_URL,
+    casperUseSidecar: process.env.CASPER_USE_SIDECAR,
+    casperSseEnabled: process.env.CASPER_SSE_ENABLED,
     jwtSecret: process.env.JWT_SECRET,
     jwtExpiry: process.env.JWT_EXPIRY,
     corsOrigin: process.env.CORS_ORIGIN,

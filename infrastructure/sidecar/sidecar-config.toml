@@ -1,0 +1,100 @@
+# =============================================================================
+# Casper Sidecar Configuration for CEWCE
+# =============================================================================
+# Version: casper-sidecar v2.0.0 (compatible with casper-node v2.0.4)
+# Reference: https://github.com/casper-network/casper-sidecar
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# RPC Server Configuration
+# -----------------------------------------------------------------------------
+# The RPC server provides JSON-RPC API for clients to interact with Casper
+[rpc_server.main_server]
+enable_server = true
+enable_block_prefetch = true
+ip_address = '0.0.0.0'
+port = 7777
+qps_limit = 100
+max_body_bytes = 2_621_440
+cors_origin = '*'
+default_limit_requests = 100
+default_limit_period = "1s"
+
+[rpc_server.node_client]
+# Connect to Casper node binary port
+ip_address = 'casper-node'
+port = 28101
+max_message_size_bytes = 4_194_304
+message_timeout_secs = 10
+client_access_timeout_secs = 10
+keepalive_timeout_ms = 4_000
+
+[rpc_server.node_client.exponential_backoff]
+initial_delay_ms = 1000
+max_delay_ms = 32_000
+coefficient = 2
+max_attempts = 30
+
+[rpc_server.speculative_exec_server]
+enable_server = false
+ip_address = '0.0.0.0'
+port = 7778
+qps_limit = 1
+max_body_bytes = 2_621_440
+cors_origin = ''
+
+# -----------------------------------------------------------------------------
+# SSE Server Configuration
+# -----------------------------------------------------------------------------
+# Server-Sent Events for real-time event streaming
+[sse_server]
+enable_server = true
+emulate_legacy_sse_apis = ["V1"]
+disable_event_persistence = false
+
+[[sse_server.connections]]
+ip_address = "casper-node"
+sse_port = 18101
+rest_port = 14101
+max_attempts = 10
+delay_between_retries_in_seconds = 5
+allow_partial_connection = false
+enable_logging = true
+connection_timeout_in_seconds = 5
+no_message_timeout_in_seconds = 120
+sleep_between_keep_alive_checks_in_seconds = 30
+
+[sse_server.event_stream_server]
+port = 19999
+max_concurrent_subscribers = 100
+event_stream_buffer_length = 5000
+
+# -----------------------------------------------------------------------------
+# REST API Server Configuration
+# -----------------------------------------------------------------------------
+[rest_api_server]
+enable_server = true
+port = 18888
+max_concurrent_requests = 50
+max_requests_per_second = 100
+request_timeout_in_seconds = 10
+
+# -----------------------------------------------------------------------------
+# Admin API Server Configuration
+# -----------------------------------------------------------------------------
+[admin_api_server]
+enable_server = true
+port = 18887
+max_concurrent_requests = 10
+max_requests_per_second = 10
+
+# -----------------------------------------------------------------------------
+# Storage Configuration
+# -----------------------------------------------------------------------------
+[storage]
+storage_folder = "/data/sidecar"
+
+[storage.sqlite_config]
+file_name = "sidecar_events.db3"
+max_connections_in_pool = 100
+wal_autocheckpointing_interval = 1000

@@ -1,0 +1,96 @@
+# =============================================================================
+# Prometheus Scrape Configuration for CEWCE Sidecar
+# =============================================================================
+# Add these targets to your prometheus.yml scrape_configs section.
+# =============================================================================
+
+# Example prometheus.yml scrape_configs entry:
+#
+# scrape_configs:
+#   # CEWCE Backend Metrics
+#   - job_name: 'cewce-backend'
+#     static_configs:
+#       - targets: ['backend:3001']
+#     metrics_path: '/metrics'
+#     scrape_interval: 15s
+#
+#   # Casper Sidecar Admin Metrics
+#   - job_name: 'casper-sidecar'
+#     static_configs:
+#       - targets: ['casper-sidecar:18887']
+#     metrics_path: '/metrics'
+#     scrape_interval: 30s
+#
+#   # Casper Node Metrics (if available)
+#   - job_name: 'casper-node'
+#     static_configs:
+#       - targets: ['casper-node:8888']
+#     metrics_path: '/metrics'
+#     scrape_interval: 30s
+
+# =============================================================================
+# Key Metrics to Monitor
+# =============================================================================
+#
+# Sidecar Metrics (from /metrics endpoint):
+# - node_connection_status: 1 = connected, 0 = disconnected
+# - sse_subscriber_count: Number of active SSE subscribers
+# - blocks_processed_total: Total blocks processed
+# - events_emitted_total: Total events emitted to subscribers
+# - rpc_requests_total: Total RPC requests handled
+# - rpc_request_duration_seconds: RPC request latency histogram
+#
+# CEWCE Backend Metrics (custom):
+# - cewce_sidecar_calls_total: Total calls to Sidecar
+# - cewce_sidecar_errors_total: Total Sidecar call errors
+# - cewce_node_calls_total: Total direct node RPC calls
+# - cewce_node_errors_total: Total node RPC errors
+# - cewce_fallback_count_total: Number of fallbacks from Sidecar to Node
+# - cewce_sse_events_received_total: SSE events received
+# - cewce_sse_events_processed_total: SSE events successfully processed
+# - cewce_sse_connection_status: 1 = connected, 0 = disconnected
+
+# =============================================================================
+# Alert Rules
+# =============================================================================
+#
+# Add these to your alerting rules:
+#
+# groups:
+#   - name: cewce-sidecar
+#     rules:
+#       - alert: SidecarDisconnected
+#         expr: node_connection_status == 0
+#         for: 1m
+#         labels:
+#           severity: warning
+#         annotations:
+#           summary: "Casper Sidecar disconnected from node"
+#           description: "Sidecar has been disconnected from the Casper node for more than 1 minute."
+#
+#       - alert: HighFallbackRate
+#         expr: rate(cewce_fallback_count_total[5m]) > 0.1
+#         for: 5m
+#         labels:
+#           severity: warning
+#         annotations:
+#           summary: "High Sidecar fallback rate"
+#           description: "More than 10% of requests are falling back to direct node RPC."
+#
+#       - alert: SSEDisconnected
+#         expr: cewce_sse_connection_status == 0
+#         for: 2m
+#         labels:
+#           severity: warning
+#         annotations:
+#           summary: "SSE listener disconnected"
+#           description: "The SSE listener has been disconnected for more than 2 minutes."
+#
+#       - alert: SidecarHighLatency
+#         expr: histogram_quantile(0.95, rate(rpc_request_duration_seconds_bucket[5m])) > 2
+#         for: 5m
+#         labels:
+#           severity: warning
+#         annotations:
+#           summary: "High Sidecar RPC latency"
+#           description: "95th percentile RPC latency is above 2 seconds."

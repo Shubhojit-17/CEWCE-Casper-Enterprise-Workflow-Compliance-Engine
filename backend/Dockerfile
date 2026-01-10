@@ -33,6 +33,9 @@ FROM node:18-alpine AS production
 
 WORKDIR /app
 
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
+
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S cewce -u 1001
@@ -42,12 +45,16 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install production dependencies only
-RUN npm ci --only=production && \
+RUN npm ci --omit=dev && \
     npx prisma generate && \
     npm cache clean --force
 
 # Copy built application
 COPY --from=builder /app/dist ./dist
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
 
 # Set ownership
 RUN chown -R cewce:nodejs /app
@@ -59,8 +66,8 @@ USER cewce
 EXPOSE 4000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:4000/api/health || exit 1
 
-# Start application
-CMD ["node", "dist/index.js"]
+# Start application with migrations
+ENTRYPOINT ["./docker-entrypoint.sh"]

@@ -1,0 +1,220 @@
+# =============================================================================
+# Casper Sidecar Kubernetes Deployment
+# =============================================================================
+# Pinned versions:
+#   - casper-sidecar: v2.0.0
+# 
+# Rationale: Compatible with casper-node v2.0.4 (Casper 2.0/Condor)
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sidecar-config
+  labels:
+    app: casper-sidecar
+data:
+  config.toml: |
+    # RPC Server Configuration
+    [rpc_server.main_server]
+    enable_server = true
+    enable_block_prefetch = true
+    ip_address = '0.0.0.0'
+    port = 7777
+    qps_limit = 100
+    max_body_bytes = 2621440
+    cors_origin = '*'
+    
+    [rpc_server.node_client]
+    ip_address = '${NODE_HOST}'
+    port = 28101
+    max_message_size_bytes = 4194304
+    message_timeout_secs = 10
+    
+    [rpc_server.node_client.exponential_backoff]
+    initial_delay_ms = 1000
+    max_delay_ms = 32000
+    coefficient = 2
+    max_attempts = 30
+    
+    [rpc_server.speculative_exec_server]
+    enable_server = false
+    
+    # SSE Server Configuration
+    [sse_server]
+    enable_server = true
+    emulate_legacy_sse_apis = ["V1"]
+    
+    [[sse_server.connections]]
+    ip_address = "${NODE_HOST}"
+    sse_port = 18101
+    rest_port = 14101
+    max_attempts = 10
+    delay_between_retries_in_seconds = 5
+    
+    [sse_server.event_stream_server]
+    port = 19999
+    max_concurrent_subscribers = 100
+    event_stream_buffer_length = 5000
+    
+    # REST API Server
+    [rest_api_server]
+    enable_server = true
+    port = 18888
+    max_concurrent_requests = 50
+    
+    # Admin API Server
+    [admin_api_server]
+    enable_server = true
+    port = 18887
+    
+    # Storage
+    [storage]
+    storage_folder = "/data/sidecar"
+    
+    [storage.sqlite_config]
+    file_name = "sidecar_events.db3"
+    max_connections_in_pool = 100
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: casper-sidecar
+  labels:
+    app: casper-sidecar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: casper-sidecar
+  template:
+    metadata:
+      labels:
+        app: casper-sidecar
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "18887"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: sidecar
+          image: makesoftware/casper-sidecar:v2.0.0
+          args:
+            - "--path-to-config"
+            - "/etc/casper-sidecar/config.toml"
+          ports:
+            - name: rpc
+              containerPort: 7777
+              protocol: TCP
+            - name: rest
+              containerPort: 18888
+              protocol: TCP
+            - name: admin
+              containerPort: 18887
+              protocol: TCP
+            - name: sse
+              containerPort: 19999
+              protocol: TCP
+          env:
+            - name: RUST_LOG
+              value: "info"
+            - name: NODE_HOST
+              value: "casper-node"  # Override if using external node
+          volumeMounts:
+            - name: config
+              mountPath: /etc/casper-sidecar
+              readOnly: true
+            - name: data
+              mountPath: /data/sidecar
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /block
+              port: rest
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /block
+              port: rest
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: config
+          configMap:
+            name: sidecar-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: sidecar-data
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sidecar-data
+  labels:
+    app: casper-sidecar
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: standard  # Adjust for your cluster
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: casper-sidecar
+  labels:
+    app: casper-sidecar
+spec:
+  type: ClusterIP
+  ports:
+    - name: rpc
+      port: 7777
+      targetPort: 7777
+      protocol: TCP
+    - name: rest
+      port: 18888
+      targetPort: 18888
+      protocol: TCP
+    - name: admin
+      port: 18887
+      targetPort: 18887
+      protocol: TCP
+    - name: sse
+      port: 19999
+      targetPort: 19999
+      protocol: TCP
+  selector:
+    app: casper-sidecar
+
+---
+# ServiceMonitor for Prometheus Operator (optional)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: casper-sidecar
+  labels:
+    app: casper-sidecar
+spec:
+  selector:
+    matchLabels:
+      app: casper-sidecar
+  endpoints:
+    - port: admin
+      path: /metrics
+      interval: 30s

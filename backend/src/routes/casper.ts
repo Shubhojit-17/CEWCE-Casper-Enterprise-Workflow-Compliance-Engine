@@ -53,10 +53,21 @@ casperRouter.get('/account/:publicKey', requireAuth, async (req: Request, res: R
   try {
     const { publicKey } = req.params;
 
+    // Log the request
+    console.log(`Fetching account info for: ${publicKey}`);
+
     const [accountInfo, balance] = await Promise.all([
-      getAccountInfo(publicKey).catch(() => null),
-      getAccountBalance(publicKey).catch(() => '0'),
+      getAccountInfo(publicKey).catch((err) => {
+        console.log('Account info fetch failed:', err.message);
+        return null;
+      }),
+      getAccountBalance(publicKey).catch((err) => {
+        console.error('Balance fetch failed:', err.message);
+        return '0';
+      }),
     ]);
+
+    console.log(`Account balance result: ${balance}`);
 
     res.json({
       success: true,

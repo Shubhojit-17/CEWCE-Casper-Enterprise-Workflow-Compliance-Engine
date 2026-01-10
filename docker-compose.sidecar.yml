@@ -1,0 +1,101 @@
+# =============================================================================
+# CEWCE Docker Compose - Sidecar Development Stack
+# =============================================================================
+# This compose file adds Casper Node + Sidecar for local development/testing.
+# Use: docker-compose -f docker-compose.yml -f docker-compose.sidecar.yml up
+# 
+# PINNED VERSIONS (verified compatible):
+#   - casper-node: v2.0.4 (Condor/Casper 2.0)
+#   - casper-sidecar: v2.0.0
+#
+# Rationale: Sidecar v2.0.0 release notes explicitly state compatibility with
+# casper-node 2.0.3+. Node v2.0.4 is the latest stable bug fix release.
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # Casper Node (Testnet Sync Mode)
+  # ==========================================================================
+  # NOTE: For local development, we use a lightweight testnet node.
+  # In production, connect to existing infrastructure or cspr.cloud.
+  casper-node:
+    image: makesoftware/casper-node:v2.0.4
+    container_name: cewce-casper-node
+    restart: unless-stopped
+    volumes:
+      - casper_node_data:/var/lib/casper
+      - ./infrastructure/sidecar/node-config.toml:/etc/casper/config.toml:ro
+    ports:
+      - "7778:7778"   # Binary port for direct RPC (legacy)
+      - "18101:18101" # SSE port
+      - "14101:14101" # REST port
+      - "28101:28101" # Binary port for Sidecar
+    environment:
+      RUST_LOG: info
+    networks:
+      - cewce-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:14101/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ==========================================================================
+  # Casper Sidecar
+  # ==========================================================================
+  # JSON-RPC bridge + SSE event relay + REST API
+  casper-sidecar:
+    image: makesoftware/casper-sidecar:v2.0.0
+    container_name: cewce-casper-sidecar
+    restart: unless-stopped
+    depends_on:
+      casper-node:
+        condition: service_healthy
+    volumes:
+      - ./infrastructure/sidecar/sidecar-config.toml:/etc/casper-sidecar/config.toml:ro
+      - sidecar_data:/data/sidecar
+    ports:
+      - "7777:7777"   # JSON-RPC API (primary endpoint for clients)
+      - "18888:18888" # REST API (block queries, deploy info)
+      - "18887:18887" # Admin API (metrics, health)
+      - "19999:19999" # SSE events stream
+    environment:
+      RUST_LOG: info
+    command: ["--path-to-config", "/etc/casper-sidecar/config.toml"]
+    networks:
+      - cewce-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:18888/block"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ==========================================================================
+  # Backend with Sidecar Environment
+  # ==========================================================================
+  backend:
+    environment:
+      # Primary: Use Sidecar for all RPC calls
+      CASPER_SIDECAR_URL: http://casper-sidecar:7777/rpc
+      CASPER_SIDECAR_REST_URL: http://casper-sidecar:18888
+      CASPER_SIDECAR_SSE_URL: http://casper-sidecar:19999/events
+      CASPER_SIDECAR_ADMIN_URL: http://casper-sidecar:18887
+      # Fallback: Direct node RPC (used if Sidecar unavailable)
+      CASPER_NODE_URL: ${CASPER_NODE_URL:-http://casper-node:7778/rpc}
+      # Feature flags
+      CASPER_USE_SIDECAR: "true"
+      CASPER_SSE_ENABLED: "true"
+    depends_on:
+      casper-sidecar:
+        condition: service_healthy
+
+# =============================================================================
+# Additional Volumes
+# =============================================================================
+volumes:
+  casper_node_data:
+  sidecar_data:

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/auth';
+import { useWalletStore } from './stores/wallet';
 
 // Layouts
 import { DashboardLayout } from './layouts/DashboardLayout';
@@ -9,6 +10,8 @@ import { AuthLayout } from './layouts/AuthLayout';
 // Pages
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
+import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { WorkflowsPage } from './pages/workflows/WorkflowsPage';
 import { WorkflowDetailPage } from './pages/workflows/WorkflowDetailPage';
@@ -59,11 +62,22 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const { checkAuth } = useAuthStore();
+  const { tryReconnect } = useWalletStore();
 
   // Check authentication status on app mount
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  // Attempt to auto-reconnect wallet if previously connected
+  useEffect(() => {
+    // Small delay to let wallet extension inject its provider
+    const timer = setTimeout(() => {
+      tryReconnect();
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [tryReconnect]);
 
   return (
     <BrowserRouter>
@@ -79,6 +93,8 @@ function App() {
         >
           <Route path="login" element={<LoginPage />} />
           <Route path="register" element={<RegisterPage />} />
+          <Route path="forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="reset-password" element={<ResetPasswordPage />} />
         </Route>
 
         {/* Protected Routes */}

@@ -42,7 +42,7 @@ export function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const { publicKey, isConnected, balance } = useWalletStore();
+  const { publicKey, isConnected, isConnecting, balance, connect } = useWalletStore();
 
   // Build navigation based on user roles
   const isAdmin = user?.roles?.includes('ADMIN');
@@ -195,11 +195,32 @@ export function DashboardLayout() {
                         {truncateHash(publicKey || '')}
                       </p>
                       <p className="text-xs text-white/60">
-                        {balance} CSPR
+                        {balance !== null ? `${balance} CSPR` : 'Loading balance...'}
                       </p>
                     </>
                   ) : (
-                    <p className="mt-1 text-sm text-white/60">Not connected</p>
+                    <div className="mt-2">
+                      <button
+                        onClick={() => connect()}
+                        disabled={isConnecting}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-white bg-white/20 hover:bg-white/30 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isConnecting ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            Connecting...
+                          </>
+                        ) : (
+                          <>
+                            <WalletIcon className="h-4 w-4" />
+                            Connect Wallet
+                          </>
+                        )}
+                      </button>
+                    </div>
                   )}
                 </div>
               </li>

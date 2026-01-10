@@ -1,11 +1,13 @@
 // =============================================================================
-// Wallet Store - Zustand
+// Wallet Store - Zustand with Persistence
 // =============================================================================
 
 import { create } from 'zustand';
-import { CasperClient, CLPublicKey } from 'casper-js-sdk';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { CasperClient, CLPublicKey, DeployUtil } from 'casper-js-sdk';
 
 const CASPER_NODE_URL = import.meta.env.VITE_CASPER_NODE_URL || 'https://testnet.casper-node.tor.us';
+const WALLET_STORAGE_KEY = 'cewce-wallet-state';
 
 interface WalletState {
   publicKey: string | null;
@@ -15,6 +17,7 @@ interface WalletState {
   balance: string | null;
   error: string | null;
   walletType: 'signer' | 'wallet' | null;
+  wasConnected: boolean; // Track if user previously connected
   
   // Actions
   connect: () => Promise<void>;
@@ -23,6 +26,7 @@ interface WalletState {
   signMessage: (message: string) => Promise<string>;
   signDeploy: (deploy: unknown) => Promise<unknown>;
   checkWalletAvailability: () => { signer: boolean; wallet: boolean };
+  tryReconnect: () => Promise<void>; // Silent reconnect on app load
 }
 
 // Casper Wallet Provider interface (SDK v1.5+)
@@ -87,7 +91,9 @@ const waitForWallet = (timeout = 3000): Promise<CasperWalletProvider | null> => 
   });
 };
 
-export const useWalletStore = create<WalletState>((set, get) => ({
+export const useWalletStore = create<WalletState>()(
+  persist(
+    (set, get) => ({
   publicKey: null,
   accountHash: null,
   isConnected: false,
@@ -95,12 +101,61 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   balance: null,
   error: null,
   walletType: null,
+  wasConnected: false,
 
   checkWalletAvailability: () => {
     return {
       signer: !!getCasperSigner(),
       wallet: !!getCasperWallet(),
     };
+  },
+
+  // Silent reconnect - attempts to restore wallet connection without user prompt
+  tryReconnect: async () => {
+    const { wasConnected, isConnected, isConnecting } = get();
+    
+    // Skip if already connected or connecting
+    if (isConnected || isConnecting) return;
+    
+    // Only attempt if user previously connected
+    if (!wasConnected) return;
+    
+    try {
+      const casperWallet = await waitForWallet(2000);
+      
+      if (casperWallet) {
+        // Check if still connected in the wallet extension
+        const stillConnected = await casperWallet.isConnected();
+        
+        if (stillConnected) {
+          const publicKeyHex = await casperWallet.getActivePublicKey();
+          
+          if (publicKeyHex) {
+            const publicKey = CLPublicKey.fromHex(publicKeyHex);
+            const accountHash = publicKey.toAccountHashStr();
+            
+            set({
+              publicKey: publicKeyHex,
+              accountHash,
+              isConnected: true,
+              walletType: 'wallet',
+              error: null,
+            });
+            
+            // Fetch balance after reconnect
+            await get().fetchBalance();
+            console.log('Wallet auto-reconnected successfully');
+            return;
+          }
+        }
+      }
+      
+      // If we get here, couldn't auto-reconnect
+      console.log('Could not auto-reconnect wallet - user will need to connect manually');
+    } catch (error) {
+      console.log('Auto-reconnect failed:', error);
+      // Don't show error to user - this is a silent reconnect attempt
+    }
   },
 
   connect: async () => {
@@ -158,6 +213,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
           isConnected: true,
           isConnecting: false,
           walletType: 'wallet',
+          wasConnected: true, // Remember user connected for auto-reconnect
         });
 
         await get().fetchBalance();
@@ -196,6 +252,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         isConnected: true,
         isConnecting: false,
         walletType: 'signer',
+        wasConnected: true, // Remember user connected for auto-reconnect
       });
 
       // Fetch balance after connecting
@@ -215,6 +272,8 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       isConnected: false,
       balance: null,
       error: null,
+      walletType: null,
+      // Keep wasConnected: true so user can quickly reconnect
     });
   },
 
@@ -222,50 +281,58 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     const publicKey = get().publicKey;
 
     if (!publicKey) {
+      console.log('No public key - skipping balance fetch');
       return;
     }
 
     try {
-      // Use backend API to avoid CORS issues with CSPR.cloud
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/v1/casper/account/${publicKey}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data?.balance) {
-          // Balance from backend is already in CSPR
-          const balance = data.data.balance;
-          // If it's a large number (motes), convert to CSPR
-          const balanceBigInt = BigInt(balance);
-          const cspr = balanceBigInt > BigInt(1_000_000_000) 
-            ? balanceBigInt / BigInt(1_000_000_000)
-            : balanceBigInt;
-          set({ balance: cspr.toString() });
-          return;
+      // Get token from auth store's persisted state
+      let token: string | null = null;
+      const authData = localStorage.getItem('cewce-auth');
+      if (authData) {
+        try {
+          const parsed = JSON.parse(authData);
+          token = parsed?.state?.token || null;
+        } catch {
+          console.log('Failed to parse auth data');
         }
       }
       
-      // Fallback: try direct RPC call (may fail due to CORS)
-      const client = new CasperClient(CASPER_NODE_URL);
-      const stateRootHash = await client.nodeClient.getStateRootHash();
-      const clPublicKey = CLPublicKey.fromHex(publicKey);
+      // Only fetch via backend if we have an auth token
+      if (!token) {
+        console.log('No auth token - cannot fetch balance without login');
+        set({ balance: '0' });
+        return;
+      }
+
+      console.log('Fetching balance for:', publicKey);
+      const response = await fetch(`/api/v1/casper/account/${publicKey}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       
-      const balanceUref = await client.nodeClient.getAccountBalanceUrefByPublicKey(
-        stateRootHash,
-        clPublicKey
-      );
-
-      const balance = await client.nodeClient.getAccountBalance(
-        stateRootHash,
-        balanceUref
-      );
-
-      // Convert from motes to CSPR (1 CSPR = 10^9 motes)
-      const cspr = BigInt(balance.toString()) / BigInt(1_000_000_000);
-
-      set({ balance: cspr.toString() });
+      console.log('Balance response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Balance response data:', data);
+        
+        if (data.success && data.data?.balance !== undefined) {
+          // Balance from backend is in motes, convert to CSPR
+          const balance = data.data.balance;
+          const balanceBigInt = BigInt(balance);
+          // Always convert from motes to CSPR (1 CSPR = 10^9 motes)
+          const cspr = balanceBigInt / BigInt(1_000_000_000);
+          console.log('Setting balance:', cspr.toString(), 'CSPR');
+          set({ balance: cspr.toString() });
+          return;
+        }
+      } else {
+        console.error('Balance fetch failed with status:', response.status);
+      }
+      
+      // If backend call failed, set to 0
+      console.log('Balance fetch returned no valid data');
+      set({ balance: '0' });
     } catch (error) {
       console.error('Failed to fetch balance:', error);
       set({ balance: '0' });
@@ -329,14 +396,89 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         throw new Error('Casper Wallet not available');
       }
 
-      const deployJson = typeof deploy === 'string' ? deploy : JSON.stringify(deploy);
-      const result = await wallet.sign(deployJson, publicKey);
-
-      if (!result) {
-        throw new Error('Failed to sign deploy');
+      // The deploy from backend may be in { deploy: {...} } format or just {...}
+      // Casper Wallet expects a JSON stringified deploy object
+      const deployObj = typeof deploy === 'string' ? JSON.parse(deploy) : deploy;
+      
+      // Extract the actual deploy if wrapped
+      const actualDeployObj = deployObj.deploy || deployObj;
+      
+      // Stringify for wallet
+      const deployJson = JSON.stringify(actualDeployObj);
+      
+      console.log('Calling wallet.sign with deploy:', actualDeployObj);
+      console.log('Public key:', publicKey);
+      
+      let result;
+      try {
+        result = await wallet.sign(deployJson, publicKey);
+        console.log('Wallet sign raw result:', result);
+      } catch (signError) {
+        console.error('Wallet sign threw error:', signError);
+        throw new Error(`Wallet signing failed: ${signError instanceof Error ? signError.message : 'Unknown error'}`);
       }
 
-      return result;
+      if (!result) {
+        throw new Error('Failed to sign deploy - no result returned');
+      }
+
+      // Casper Wallet returns:
+      // - { cancelled: true, message?: string } when user cancels
+      // - { cancelled: false, signature: Uint8Array } on success
+      console.log('Wallet sign result type:', typeof result, result);
+      
+      const resultObj = result as { 
+        cancelled: boolean; 
+        message?: string;
+        signature?: Uint8Array;
+      };
+      
+      // If user cancelled
+      if (resultObj.cancelled) {
+        throw new Error(resultObj.message || 'Signing was cancelled by user');
+      }
+      
+      // Wallet returned signature as Uint8Array - add it to the deploy
+      if (resultObj.signature) {
+        console.log('Got signature from wallet, adding to deploy...');
+        
+        // DeployUtil.deployFromJson expects { deploy: {...} } format
+        // If actualDeployObj is unwrapped, wrap it
+        const deployForParsing = actualDeployObj.hash ? { deploy: actualDeployObj } : actualDeployObj;
+        console.log('Deploy for parsing:', deployForParsing);
+        
+        // Parse deploy using SDK
+        const parsedDeploy = DeployUtil.deployFromJson(deployForParsing);
+        if (!parsedDeploy.ok) {
+          console.error('Failed to parse deploy. Input:', deployForParsing);
+          console.error('Parse error:', parsedDeploy.val);
+          throw new Error('Failed to parse deploy for signing');
+        }
+        
+        // The signature from Casper Wallet is already a Uint8Array
+        const signatureBytes = resultObj.signature instanceof Uint8Array
+          ? resultObj.signature
+          : new Uint8Array(Object.values(resultObj.signature));
+        
+        console.log('Signature bytes length:', signatureBytes.length);
+        
+        // Add approval with signature
+        const clPublicKey = CLPublicKey.fromHex(publicKey);
+        const signedDeploy = DeployUtil.setSignature(
+          parsedDeploy.val,
+          signatureBytes,
+          clPublicKey
+        );
+        
+        // Convert back to JSON format for backend
+        const signedDeployJson = DeployUtil.deployToJson(signedDeploy);
+        console.log('Signed deploy JSON:', signedDeployJson);
+        return signedDeployJson;
+      }
+      
+      // Unknown format - log and throw error
+      console.error('Unknown wallet sign result format:', result);
+      throw new Error('Unexpected wallet response format');
     }
 
     // Use old Casper Signer API
@@ -356,4 +498,17 @@ export const useWalletStore = create<WalletState>((set, get) => ({
 
     return signedDeploy;
   },
-}));
+    }),
+    {
+      name: WALLET_STORAGE_KEY,
+      storage: createJSONStorage(() => localStorage),
+      // Only persist these fields - not isConnecting or error
+      partialize: (state: WalletState) => ({
+        wasConnected: state.wasConnected,
+        publicKey: state.publicKey,
+        accountHash: state.accountHash,
+        walletType: state.walletType,
+      }),
+    }
+  )
+);

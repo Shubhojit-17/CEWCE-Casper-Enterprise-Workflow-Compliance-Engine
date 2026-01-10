@@ -9,6 +9,7 @@ import {
   MagnifyingGlassIcon,
   FunnelIcon,
   ArrowTopRightOnSquareIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
 import { api } from '../../lib/api';
 import { formatDateTime, truncateHash, copyToClipboard } from '../../lib/utils';
@@ -118,11 +119,39 @@ export function AuditLogPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Audit Log</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Complete history of all actions in the system
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Audit Log</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Complete history of all actions in the system
+          </p>
+        </div>
+        <button
+          onClick={async () => {
+            try {
+              const response = await api.get('/audit/export', {
+                responseType: 'blob',
+              });
+              const blob = new Blob([response.data], { type: 'text/csv' });
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `audit-export-${new Date().toISOString().split('T')[0]}.csv`;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+              toast.success('Audit log exported');
+            } catch (error) {
+              console.error('Export failed:', error);
+              toast.error('Failed to export audit log. You may need admin access.');
+            }
+          }}
+          className="btn-secondary flex items-center gap-2"
+        >
+          <ArrowDownTrayIcon className="h-5 w-5" />
+          Export CSV
+        </button>
       </div>
 
       {/* Filters */}

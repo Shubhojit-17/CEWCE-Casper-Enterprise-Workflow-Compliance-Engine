@@ -451,51 +451,13 @@ authRouter.post('/change-password', requireAuth, async (req: Request, res: Respo
       throw createError('User not found or no password set', 404, 'USER_NOT_FOUND');
     }
 
-    // Verify current password
-    const [storedHash, salt] = user.passwordHash.split(':');
-    const hashBuffer = await crypto.subtle.deriveBits(
-      {
-        name: 'PBKDF2',
-        salt: Buffer.from(salt, 'hex'),
-        iterations: 100000,
-        hash: 'SHA-256',
-      },
-      await crypto.subtle.importKey(
-        'raw',
-        new TextEncoder().encode(currentPassword),
-        'PBKDF2',
-        false,
-        ['deriveBits']
-      ),
-      256
-    );
-    const currentHash = Buffer.from(hashBuffer).toString('hex');
-
-    if (currentHash !== storedHash) {
+    // Verify current password using the same method as login
+    if (!verifyPassword(currentPassword, user.passwordHash)) {
       throw createError('Current password is incorrect', 401, 'INVALID_PASSWORD');
     }
 
-    // Hash new password
-    const newSalt = crypto.getRandomValues(new Uint8Array(16));
-    const newHashBuffer = await crypto.subtle.deriveBits(
-      {
-        name: 'PBKDF2',
-        salt: newSalt,
-        iterations: 100000,
-        hash: 'SHA-256',
-      },
-      await crypto.subtle.importKey(
-        'raw',
-        new TextEncoder().encode(newPassword),
-        'PBKDF2',
-        false,
-        ['deriveBits']
-      ),
-      256
-    );
-    const newHash = Buffer.from(newHashBuffer).toString('hex');
-    const newSaltHex = Buffer.from(newSalt).toString('hex');
-    const newPasswordHash = `${newHash}:${newSaltHex}`;
+    // Hash new password using the same method as registration
+    const newPasswordHash = hashPassword(newPassword);
 
     // Update password
     await prisma.user.update({
@@ -503,9 +465,203 @@ authRouter.post('/change-password', requireAuth, async (req: Request, res: Respo
       data: { passwordHash: newPasswordHash },
     });
 
+    logger.info({ userId: user.id }, 'User changed password');
+
     res.json({
       success: true,
       message: 'Password changed successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// =============================================================================
+// Password Reset (Forgot Password) Routes
+// =============================================================================
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+
+/**
+ * Request a password reset token.
+ * Sends a reset link to the user's email (simulated for hackathon).
+ */
+authRouter.post('/forgot-password', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email } = forgotPasswordSchema.parse(req.body);
+
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    // Always return success to prevent email enumeration
+    if (!user) {
+      logger.info({ email }, 'Password reset requested for non-existent email');
+      res.json({
+        success: true,
+        message: 'If an account exists with this email, a reset link has been sent.',
+      });
+      return;
+    }
+
+    // Generate reset token
+    const resetToken = generateRandomHex(32);
+    const resetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Store reset token (using AuthNonce table for simplicity)
+    await prisma.authNonce.upsert({
+      where: { publicKey: `reset:${email}` },
+      create: {
+        publicKey: `reset:${email}`,
+        nonce: resetToken,
+        expiresAt: resetExpiry,
+      },
+      update: {
+        nonce: resetToken,
+        expiresAt: resetExpiry,
+      },
+    });
+
+    // In production: Send email with reset link
+    // For hackathon: Log the token for demo purposes
+    logger.info({ email, resetToken }, 'Password reset token generated (demo mode - token logged)');
+
+    // For hackathon demo: Include token in response (REMOVE IN PRODUCTION)
+    res.json({
+      success: true,
+      message: 'If an account exists with this email, a reset link has been sent.',
+      // Demo only - remove in production:
+      _demo: {
+        resetToken,
+        resetUrl: `/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Reset password using a valid token.
+ */
+authRouter.post('/reset-password', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { token, newPassword } = resetPasswordSchema.parse(req.body);
+    const email = req.body.email as string;
+
+    if (!email) {
+      throw createError('Email is required', 400, 'MISSING_EMAIL');
+    }
+
+    // Find stored token
+    const storedToken = await prisma.authNonce.findUnique({
+      where: { publicKey: `reset:${email}` },
+    });
+
+    if (!storedToken) {
+      throw createError('Invalid or expired reset token', 400, 'INVALID_TOKEN');
+    }
+
+    if (storedToken.nonce !== token) {
+      throw createError('Invalid or expired reset token', 400, 'INVALID_TOKEN');
+    }
+
+    if (storedToken.expiresAt < new Date()) {
+      // Delete expired token
+      await prisma.authNonce.delete({
+        where: { publicKey: `reset:${email}` },
+      });
+      throw createError('Reset token has expired', 400, 'TOKEN_EXPIRED');
+    }
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw createError('User not found', 404, 'USER_NOT_FOUND');
+    }
+
+    // Hash and save new password
+    const newPasswordHash = hashPassword(newPassword);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: newPasswordHash },
+    });
+
+    // Delete used token
+    await prisma.authNonce.delete({
+      where: { publicKey: `reset:${email}` },
+    });
+
+    logger.info({ userId: user.id, email }, 'Password reset successfully');
+
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully. You can now login with your new password.',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Link wallet to existing email/password account.
+ */
+authRouter.post('/link-wallet', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { publicKey } = z.object({
+      publicKey: z.string().min(64).max(68),
+    }).parse(req.body);
+
+    // Validate public key format
+    let clPublicKey: ReturnType<typeof CLPublicKey.fromHex>;
+    try {
+      clPublicKey = CLPublicKey.fromHex(publicKey);
+    } catch {
+      throw createError('Invalid public key format', 400, 'INVALID_PUBLIC_KEY');
+    }
+
+    // Check if wallet is already linked to another account
+    const existingUser = await prisma.user.findUnique({
+      where: { publicKey },
+    });
+
+    if (existingUser && existingUser.id !== req.user!.userId) {
+      throw createError('This wallet is already linked to another account', 400, 'WALLET_ALREADY_LINKED');
+    }
+
+    // Update user with wallet info
+    const user = await prisma.user.update({
+      where: { id: req.user!.userId },
+      data: {
+        publicKey,
+        accountHash: clPublicKey.toAccountHashStr(),
+      },
+      include: { roles: { include: { role: true } } },
+    });
+
+    logger.info({ userId: user.id, publicKey }, 'Wallet linked to account');
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        publicKey: user.publicKey,
+        accountHash: user.accountHash,
+        displayName: user.displayName,
+        roles: user.roles.map(r => r.role.name),
+      },
     });
   } catch (error) {
     next(error);

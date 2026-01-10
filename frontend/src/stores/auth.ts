@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '../lib/api';
 import type { User, AuthResponse } from '../types';
+import { useWalletStore } from './wallet';
 
 interface AuthState {
   user: User | null;
@@ -54,6 +55,11 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
           isLoading: false,
         });
+        
+        // Fetch wallet balance now that we have auth token
+        setTimeout(() => {
+          useWalletStore.getState().fetchBalance();
+        }, 100);
       },
 
       register: async (data: RegisterData) => {
@@ -99,6 +105,11 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             isLoading: false,
           });
+          
+          // Fetch wallet balance now that we verified auth
+          setTimeout(() => {
+            useWalletStore.getState().fetchBalance();
+          }, 100);
         } catch {
           // Token invalid or expired
           set({

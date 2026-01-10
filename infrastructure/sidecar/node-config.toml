@@ -1,0 +1,33 @@
+# =============================================================================
+# Minimal Casper Node Configuration for Local Development
+# =============================================================================
+# This is a minimal config for syncing with testnet.
+# For production, use the official Casper node configuration.
+# =============================================================================
+
+[network]
+# Testnet known addresses
+known_addresses = [
+  "65.21.227.180:35000",
+  "135.181.134.57:35000", 
+  "138.201.54.44:35000"
+]
+bind_address = "0.0.0.0:35000"
+
+[consensus]
+# Use testnet consensus parameters
+
+[binary_port]
+address = "0.0.0.0:28101"
+
+[event_stream_server]
+address = "0.0.0.0:18101"
+
+[rest_server]
+address = "0.0.0.0:14101"
+
+[storage]
+path = "/var/lib/casper/storage"
+
+[logging]
+format = "json"

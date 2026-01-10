@@ -1,14 +1,14 @@
 import { PrismaClient } from '@prisma/client';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 
-// Mock Prisma client
-jest.mock('../lib/prisma.js', () => ({
+// Mock Prisma client - use path without extension for Jest compatibility
+jest.mock('../lib/prisma', () => ({
   __esModule: true,
   prisma: mockDeep<PrismaClient>(),
 }));
 
 // Mock Redis
-jest.mock('../lib/redis.js', () => ({
+jest.mock('../lib/redis', () => ({
   __esModule: true,
   redis: {
     get: jest.fn(),
@@ -21,7 +21,7 @@ jest.mock('../lib/redis.js', () => ({
 }));
 
 // Mock Logger
-jest.mock('../lib/logger.js', () => ({
+jest.mock('../lib/logger', () => ({
   __esModule: true,
   logger: {
     info: jest.fn(),

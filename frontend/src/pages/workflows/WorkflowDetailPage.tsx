@@ -34,9 +34,11 @@ import { useWalletStore } from '../../stores/wallet';
 import type { WorkflowInstance } from '../../types';
 
 interface AvailableTransition {
-  action: string;
+  name: string;
+  fromState: number;
   toState: number;
-  label: string;
+  toStateName: string;
+  requiredRoles: string[];
 }
 
 interface WorkflowDocument {
@@ -137,22 +139,67 @@ export function WorkflowDetailPage() {
     },
   });
 
-  // Transition mutation
+  // Transition mutation - creates transition, signs with wallet, and submits
   const transitionMutation = useMutation({
     mutationFn: async (data: { action: string; toState: number; comment?: string }) => {
+      // Step 1: Create transition and get unsigned deploy
       const response = await api.post(`/workflow-instances/${id}/transition`, data);
-      return response.data;
+      const { transitionId, deploy, message } = response.data.data;
+      
+      // If no deploy (off-chain only), we're done
+      if (!deploy) {
+        return { offChain: true, message };
+      }
+      
+      // Step 2: Sign the deploy with wallet
+      const { signDeploy } = useWalletStore.getState();
+      let signedDeploy;
+      try {
+        signedDeploy = await signDeploy(deploy);
+      } catch (signError) {
+        // If user rejects signing, we should cancel the pending transition
+        console.error('Wallet signing cancelled or failed:', signError);
+        throw new Error('Wallet signing was cancelled or failed. Please try again.');
+      }
+      
+      // Step 3: Submit signed deploy to backend
+      const submitResponse = await api.post(`/workflow-instances/${id}/transition/submit`, {
+        transitionId,
+        signedDeploy,
+      });
+      
+      return submitResponse.data;
     },
-    onSuccess: () => {
-      toast.success('Transition submitted to blockchain');
+    onSuccess: (data) => {
+      if (data?.offChain) {
+        toast.success('Transition recorded (off-chain)');
+      } else {
+        toast.success('Transition submitted to blockchain');
+      }
       queryClient.invalidateQueries({ queryKey: ['workflow', id] });
       queryClient.invalidateQueries({ queryKey: ['workflow-transitions', id] });
       setIsTransitionModalOpen(false);
       setSelectedTransition(null);
       setComment('');
     },
-    onError: () => {
-      toast.error('Failed to submit transition');
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to submit transition');
+    },
+  });
+
+  // Cancel pending transition mutation
+  const cancelTransitionMutation = useMutation({
+    mutationFn: async (transitionId: string) => {
+      const response = await api.post(`/workflow-instances/${id}/transition/${transitionId}/cancel`);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Transition cancelled');
+      queryClient.invalidateQueries({ queryKey: ['workflow', id] });
+      queryClient.invalidateQueries({ queryKey: ['workflow-transitions', id] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to cancel transition');
     },
   });
 
@@ -169,7 +216,7 @@ export function WorkflowDetailPage() {
   const submitTransition = () => {
     if (!selectedTransition) return;
     transitionMutation.mutate({
-      action: selectedTransition.action,
+      action: selectedTransition.name,
       toState: selectedTransition.toState,
       comment: comment || undefined,
     });
@@ -346,26 +393,26 @@ export function WorkflowDetailPage() {
                 <div className="flex flex-wrap gap-3">
                   {availableTransitions.map((transition) => (
                     <button
-                      key={transition.action}
+                      key={`${transition.name}-${transition.toState}`}
                       onClick={() => handleTransition(transition)}
                       className={
-                        transition.action === 'approve'
+                        transition.name === 'approve'
                           ? 'btn-success'
-                          : transition.action === 'reject'
+                          : transition.name === 'reject'
                           ? 'btn-danger'
                           : 'btn-secondary'
                       }
                     >
-                      {transition.action === 'approve' && (
+                      {transition.name === 'approve' && (
                         <CheckCircleIcon className="h-5 w-5 mr-2" />
                       )}
-                      {transition.action === 'reject' && (
+                      {transition.name === 'reject' && (
                         <XCircleIcon className="h-5 w-5 mr-2" />
                       )}
-                      {transition.action === 'escalate' && (
+                      {transition.name === 'escalate' && (
                         <ExclamationTriangleIcon className="h-5 w-5 mr-2" />
                       )}
-                      {transition.label}
+                      {transition.name.charAt(0).toUpperCase() + transition.name.slice(1)}
                     </button>
                   ))}
                 </div>
@@ -474,9 +521,20 @@ export function WorkflowDetailPage() {
                                   </button>
                                 </p>
                               )}
-                              <p className="mt-1 text-xs text-gray-400">
-                                {formatRelativeTime(transition.createdAt)}
-                              </p>
+                              <div className="mt-1 flex items-center gap-3">
+                                <p className="text-xs text-gray-400">
+                                  {formatRelativeTime(transition.createdAt)}
+                                </p>
+                                {transition.status === 'PENDING' && (
+                                  <button
+                                    onClick={() => cancelTransitionMutation.mutate(transition.id)}
+                                    disabled={cancelTransitionMutation.isPending}
+                                    className="text-xs text-red-600 hover:text-red-800 font-medium"
+                                  >
+                                    {cancelTransitionMutation.isPending ? 'Cancelling...' : 'Cancel'}
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -678,7 +736,7 @@ export function WorkflowDetailPage() {
                     as="h3"
                     className="text-lg font-medium leading-6 text-gray-900"
                   >
-                    Confirm Transition: {selectedTransition?.label}
+                    Confirm Transition: {selectedTransition?.name && (selectedTransition.name.charAt(0).toUpperCase() + selectedTransition.name.slice(1))}
                   </Dialog.Title>
                   <div className="mt-4">
                     <p className="text-sm text-gray-500">
@@ -719,7 +777,7 @@ export function WorkflowDetailPage() {
                     <button
                       type="button"
                       className={`flex-1 ${
-                        selectedTransition?.action === 'reject'
+                        selectedTransition?.name === 'reject'
                           ? 'btn-danger'
                           : 'btn-primary'
                       }`}
