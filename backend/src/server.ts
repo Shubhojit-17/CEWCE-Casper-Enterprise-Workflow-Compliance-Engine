@@ -40,6 +40,7 @@ export function createServer(): Express {
   // Reference: https://github.com/expressjs/cors
   // Support multiple origins via comma-separated CORS_ORIGIN env var
   const allowedOrigins = config.corsOrigin.split(',').map(o => o.trim());
+  logger.info({ allowedOrigins }, 'CORS allowed origins');
   
   app.use(cors({
     origin: (origin, callback) => {
@@ -51,12 +52,15 @@ export function createServer(): Express {
         return callback(null, true);
       }
       
-      // In development, be more permissive
-      if (config.nodeEnv === 'development') {
+      // In development or production, allow if origin matches pattern
+      // This helps with Vercel preview deployments
+      if (origin.includes('vercel.app') || origin.includes('localhost')) {
+        logger.info({ origin }, 'Allowing Vercel/localhost origin');
         return callback(null, true);
       }
       
-      callback(new Error('CORS not allowed'));
+      logger.warn({ origin, allowedOrigins }, 'CORS rejected origin');
+      callback(null, false); // Don't throw error, just reject
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

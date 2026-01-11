@@ -26,6 +26,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "bullmq": "^5.0.0",
     "casper-js-sdk": "^2.15.0",
     "compression": "^1.7.4",
