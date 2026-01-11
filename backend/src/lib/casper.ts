@@ -12,7 +12,6 @@ import './deployer-keys.js';
 import CasperSDK from 'casper-js-sdk';
 const {
   CasperClient,
-  CasperServiceByJsonRPC,
   CLPublicKey,
   DeployUtil,
   RuntimeArgs,
@@ -159,7 +158,7 @@ async function jsonRpcCall(method: string, params: unknown[] = []): Promise<unkn
 
 // Initialize Casper client
 // Note: CasperClient is the main interface for blockchain interactions
-const casperService = new CasperServiceByJsonRPC(config.casperNodeUrl);
+// casperService removed - all queries now use authorized jsonRpcCall
 export const casperClient = new CasperClient(config.casperNodeUrl);
 
 // Contract client (initialized after contract deployment)
