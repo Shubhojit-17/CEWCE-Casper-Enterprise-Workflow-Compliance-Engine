@@ -4,9 +4,8 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { CasperClient, CLPublicKey, DeployUtil } from 'casper-js-sdk';
+import { CLPublicKey, DeployUtil } from 'casper-js-sdk';
 
-const CASPER_NODE_URL = import.meta.env.VITE_CASPER_NODE_URL || 'https://testnet.casper-node.tor.us';
 const WALLET_STORAGE_KEY = 'cewce-wallet-state';
 
 interface WalletState {
@@ -36,7 +35,7 @@ interface CasperWalletProvider {
   getActivePublicKey: () => Promise<string>;
   isConnected: () => Promise<boolean>;
   signMessage: (message: string, signingPublicKeyHex: string) => Promise<string>;
-  sign: (deployJson: string, signingPublicKeyHex: string) => Promise<{ signature: string }>;
+  sign: (deployJson: string, signingPublicKeyHex: string) => Promise<{ cancelled: boolean; message?: string; signature?: Uint8Array }>;
 }
 
 // Check if old Casper Signer is available (casperlabsHelper)
@@ -427,19 +426,13 @@ export const useWalletStore = create<WalletState>()(
       // - { cancelled: false, signature: Uint8Array } on success
       console.log('Wallet sign result type:', typeof result, result);
       
-      const resultObj = result as { 
-        cancelled: boolean; 
-        message?: string;
-        signature?: Uint8Array;
-      };
-      
       // If user cancelled
-      if (resultObj.cancelled) {
-        throw new Error(resultObj.message || 'Signing was cancelled by user');
+      if (result.cancelled) {
+        throw new Error(result.message || 'Signing was cancelled by user');
       }
       
       // Wallet returned signature as Uint8Array - add it to the deploy
-      if (resultObj.signature) {
+      if (result.signature) {
         console.log('Got signature from wallet, adding to deploy...');
         
         // DeployUtil.deployFromJson expects { deploy: {...} } format
@@ -456,9 +449,9 @@ export const useWalletStore = create<WalletState>()(
         }
         
         // The signature from Casper Wallet is already a Uint8Array
-        const signatureBytes = resultObj.signature instanceof Uint8Array
-          ? resultObj.signature
-          : new Uint8Array(Object.values(resultObj.signature));
+        const signatureBytes = result.signature instanceof Uint8Array
+          ? result.signature
+          : new Uint8Array(Object.values(result.signature));
         
         console.log('Signature bytes length:', signatureBytes.length);
         
