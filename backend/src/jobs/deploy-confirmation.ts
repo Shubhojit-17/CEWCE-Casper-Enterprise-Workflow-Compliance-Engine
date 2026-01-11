@@ -3,14 +3,14 @@
 // =============================================================================
 // Monitors submitted deploys for confirmation via Casper RPC polling.
 // Uses get-deploy RPC call to check execution results until finality.
-// No Sidecar dependency - operates in RPC-only mode for hackathon.
+// Supports both Casper 1.x and 2.x deploy confirmation formats.
 // =============================================================================
 
 import { Queue, Worker, type Job } from 'bullmq';
 import { redis } from '../lib/redis.js';
 import { prisma } from '../lib/prisma.js';
 import { logger } from '../lib/logger.js';
-import { getDeployInfo } from '../lib/casper.js';
+import { getDeployInfo, parseDeployConfirmation } from '../lib/casper.js';
 
 const QUEUE_NAME = 'deploy-confirmation';
 
@@ -25,8 +25,134 @@ interface DeployConfirmationJob {
 let confirmQueue: Queue<DeployConfirmationJob> | null = null;
 let confirmWorker: Worker<DeployConfirmationJob> | null = null;
 
-const MAX_ATTEMPTS = 60; // 60 attempts * 5 second delay = 5 minutes max wait
+const MAX_ATTEMPTS = 120; // 120 attempts * 5 second delay = 10 minutes max wait
 const RETRY_DELAY = 5000; // 5 seconds
+
+/**
+ * Handle a successful transition confirmation
+ */
+async function handleSuccessfulTransition(
+  transitionId: string,
+  instanceId: string,
+  toState: number,
+  deployHash: string,
+  blockHash: string | null,
+  executionCost: string | null
+): Promise<void> {
+  // Get instance to check if terminal state
+  const instance = await prisma.workflowInstance.findUnique({
+    where: { id: instanceId },
+    include: { template: true },
+  });
+
+  if (!instance) {
+    logger.error({ instanceId }, 'Instance not found for confirmed deploy');
+    return;
+  }
+
+  const states = instance.template.states as Array<{
+    id: number;
+    isTerminal: boolean;
+  }>;
+  const isTerminal = states.find(s => s.id === toState)?.isTerminal || false;
+
+  // Get the transition for audit log
+  const transition = await prisma.workflowTransition.findUnique({
+    where: { id: transitionId },
+  });
+
+  // Update instance and transition in a transaction
+  await prisma.$transaction([
+    prisma.workflowInstance.update({
+      where: { id: instanceId },
+      data: {
+        currentState: toState,
+        status: isTerminal ? 'COMPLETED' : 'PENDING',
+      },
+    }),
+    prisma.workflowTransition.update({
+      where: { id: transitionId },
+      data: { 
+        status: 'CONFIRMED_ONCHAIN',
+        blockHash,
+        executionCost: executionCost ? BigInt(executionCost) : null,
+        confirmedAt: new Date(),
+      },
+    }),
+    // Create audit log for successful on-chain confirmation
+    prisma.auditLog.create({
+      data: {
+        userId: transition?.actorId || 'system',
+        action: 'TRANSITION_CONFIRMED_ONCHAIN',
+        resource: 'WorkflowTransition',
+        resourceId: transitionId,
+        details: {
+          deployHash,
+          blockHash,
+          executionCost: executionCost?.toString(),
+          fromState: transition?.fromState,
+          toState,
+          isTerminal,
+          explorerUrl: `https://testnet.cspr.live/deploy/${deployHash}`,
+        },
+      },
+    }),
+  ]);
+
+  logger.info({ 
+    instanceId, 
+    toState, 
+    isTerminal, 
+    blockHash,
+    explorerUrl: `https://testnet.cspr.live/deploy/${deployHash}`
+  }, 'Workflow instance state updated - ON-CHAIN CONFIRMED');
+}
+
+/**
+ * Handle a failed transition
+ */
+async function handleFailedTransition(
+  transitionId: string,
+  deployHash: string,
+  blockHash: string | null,
+  executionCost: string | null,
+  errorMessage: string
+): Promise<void> {
+  // Get the transition for audit log
+  const transition = await prisma.workflowTransition.findUnique({
+    where: { id: transitionId },
+  });
+
+  await prisma.workflowTransition.update({
+    where: { id: transitionId },
+    data: {
+      status: 'FAILED_ONCHAIN',
+      error: errorMessage,
+      blockHash,
+      executionCost: executionCost ? BigInt(executionCost) : null,
+      confirmedAt: new Date(),
+    },
+  });
+
+  if (transition) {
+    await prisma.auditLog.create({
+      data: {
+        userId: transition.actorId,
+        action: 'TRANSITION_FAILED_ONCHAIN',
+        resource: 'WorkflowTransition',
+        resourceId: transitionId,
+        details: {
+          deployHash,
+          blockHash,
+          error: errorMessage,
+          executionCost: executionCost?.toString(),
+          fromState: transition.fromState,
+          toState: transition.toState,
+        },
+      },
+    });
+  }
+}
 
 /**
  * Initialize the deploy confirmation worker.
@@ -49,25 +175,16 @@ export async function initializeDeployConfirmationWorker(): Promise<void> {
 
       try {
         const deployInfo = await getDeployInfo(deployHash);
-        const info = deployInfo as {
-          execution_results?: Array<{
-            result: { Success?: unknown; Failure?: { error_message: string } };
-          }>;
-        };
+        
+        // Use shared helper to parse confirmation - handles both Casper 1.x and 2.x
+        const confirmation = parseDeployConfirmation(deployInfo);
 
-        if (!info.execution_results || info.execution_results.length === 0) {
-          // Not yet processed
+        if (confirmation.status === 'PENDING') {
+          // Deploy not yet executed - re-queue
+          logger.debug({ deployHash, transitionId, attempt }, 'Deploy pending, re-queuing');
           if (attempt < MAX_ATTEMPTS) {
-            // Re-queue with incremented attempt
-            await addDeployConfirmationJob(
-              deployHash,
-              transitionId,
-              instanceId,
-              toState,
-              attempt + 1
-            );
+            await addDeployConfirmationJob(deployHash, transitionId, instanceId, toState, attempt + 1);
           } else {
-            // Max attempts reached
             logger.error({ deployHash, transitionId }, 'Deploy confirmation timed out');
             await prisma.workflowTransition.update({
               where: { id: transitionId },
@@ -80,68 +197,46 @@ export async function initializeDeployConfirmationWorker(): Promise<void> {
           return;
         }
 
-        const result = info.execution_results[0].result;
-
-        if (result.Failure) {
-          // Deploy failed
-          logger.error({ deployHash, error: result.Failure }, 'Deploy execution failed');
-          await prisma.workflowTransition.update({
-            where: { id: transitionId },
-            data: {
-              status: 'FAILED',
-              error: result.Failure.error_message,
-            },
-          });
+        if (confirmation.status === 'FAILURE') {
+          // Deploy failed on-chain
+          logger.error({ 
+            deployHash, 
+            transitionId,
+            error: confirmation.error, 
+            blockHash: confirmation.blockHash 
+          }, 'Deploy execution FAILED on-chain');
+          
+          await handleFailedTransition(
+            transitionId,
+            deployHash,
+            confirmation.blockHash || null,
+            confirmation.executionCost || null,
+            confirmation.error || 'Unknown error'
+          );
           return;
         }
 
-        // Deploy succeeded
-        logger.info({ deployHash, transitionId }, 'Deploy confirmed');
-
-        // Get instance to check if terminal state
-        const instance = await prisma.workflowInstance.findUnique({
-          where: { id: instanceId },
-          include: { template: true },
-        });
-
-        if (!instance) {
-          logger.error({ instanceId }, 'Instance not found for confirmed deploy');
-          return;
-        }
-
-        const states = instance.template.states as Array<{
-          id: number;
-          isTerminal: boolean;
-        }>;
-        const isTerminal = states.find(s => s.id === toState)?.isTerminal || false;
-
-        // Update instance and transition
-        await prisma.$transaction([
-          prisma.workflowInstance.update({
-            where: { id: instanceId },
-            data: {
-              currentState: toState,
-              status: isTerminal ? 'COMPLETED' : 'PENDING',
-            },
-          }),
-          prisma.workflowTransition.update({
-            where: { id: transitionId },
-            data: { status: 'CONFIRMED' },
-          }),
-        ]);
-
-        logger.info({ instanceId, toState, isTerminal }, 'Instance state updated');
+        // Deploy succeeded on-chain
+        logger.info({ 
+          deployHash, 
+          transitionId, 
+          blockHash: confirmation.blockHash, 
+          executionCost: confirmation.executionCost 
+        }, 'Deploy CONFIRMED on-chain');
+        
+        await handleSuccessfulTransition(
+          transitionId, 
+          instanceId, 
+          toState, 
+          deployHash, 
+          confirmation.blockHash || null, 
+          confirmation.executionCost || null
+        );
       } catch (error) {
-        logger.error({ error, deployHash }, 'Error checking deploy confirmation');
+        logger.error({ error, deployHash, transitionId }, 'Error checking deploy confirmation');
 
         if (attempt < MAX_ATTEMPTS) {
-          await addDeployConfirmationJob(
-            deployHash,
-            transitionId,
-            instanceId,
-            toState,
-            attempt + 1
-          );
+          await addDeployConfirmationJob(deployHash, transitionId, instanceId, toState, attempt + 1);
         }
       }
     },
@@ -158,6 +253,8 @@ export async function initializeDeployConfirmationWorker(): Promise<void> {
   confirmWorker.on('failed', (job, error) => {
     logger.error({ jobId: job?.id, error }, 'Deploy confirmation job failed');
   });
+
+  logger.info('Deploy confirmation worker initialized');
 }
 
 /**

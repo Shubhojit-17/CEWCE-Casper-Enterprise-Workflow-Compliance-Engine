@@ -207,7 +207,9 @@ model WorkflowTemplate {
   metadata    Json     @default("{}")
   
   // Blockchain Reference
-  contractHash String? // Deployed contract hash for this template
+  contractHash String? // SHA-256 hash of template definition for integrity
+  onChainWorkflowId BigInt? @unique // U256 workflow ID from create_workflow on-chain registration
+  registrationDeployHash String? // Deploy hash for on-chain registration
   
   // Status
   status      TemplateStatus @default(DRAFT)
@@ -310,6 +312,9 @@ model WorkflowTransition {
   // Blockchain Reference
   deployHash  String?  @unique
   blockHeight BigInt?
+  blockHash   String?  // Block hash when deploy was included
+  stateRootHash String? // State root hash after execution
+  executionCost BigInt? // Execution cost in motes
   
   // Confirmation Status
   status      TransitionStatus @default(PENDING)
@@ -335,10 +340,13 @@ model WorkflowTransition {
 }
 
 enum TransitionStatus {
-  PENDING
-  CONFIRMED
-  FAILED
-  TIMEOUT
+  PENDING           // Legacy/initial state
+  ONCHAIN_PENDING   // Deploy submitted, waiting for confirmation
+  CONFIRMED         // Legacy confirmed (will migrate to CONFIRMED_ONCHAIN)
+  CONFIRMED_ONCHAIN // Deploy confirmed on-chain
+  FAILED            // Legacy failed
+  FAILED_ONCHAIN    // Deploy failed on-chain
+  TIMEOUT           // Confirmation timed out
 }
 
 // =============================================================================

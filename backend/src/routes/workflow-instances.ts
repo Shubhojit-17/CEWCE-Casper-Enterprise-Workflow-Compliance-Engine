@@ -6,19 +6,18 @@
 
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
-import CasperSDK from 'casper-js-sdk';
-const { DeployUtil } = CasperSDK;
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { createError } from '../middleware/error-handler.js';
 import { sha256Hex, sha256Bytes, hexToBytes } from '../lib/crypto.js';
 import {
-  buildCreateWorkflowDeploy,
-  buildTransitionStateDeploy,
   submitDeploy,
   waitForDeploy,
+  createWorkflowInstanceOnChain,
+  isServerSigningAvailable,
 } from '../lib/casper.js';
 import { addSlaMonitorJob } from '../jobs/sla-monitor.js';
+import { addInstanceRegistrationJob } from '../jobs/instance-registration.js';
 import { logger } from '../lib/logger.js';
 
 export const workflowInstancesRouter = Router();
@@ -179,6 +178,8 @@ workflowInstancesRouter.get('/', requireAuth, async (req: Request, res: Response
       data: {
         instances: instances.map(i => ({
           ...i,
+          // Convert BigInt to string for JSON serialization
+          workflowId: i.workflowId?.toString() || null,
           transitionCount: i._count.transitions,
           _count: undefined,
         })),
@@ -228,11 +229,41 @@ workflowInstancesRouter.get('/:id', requireAuth, async (req: Request, res: Respo
     const states = instance.template.states as Array<{ id: number; name: string }>;
     const currentStateName = states.find(s => s.id === instance.currentState)?.name || 'Unknown';
 
+    // Check for legacy template (PUBLISHED but no blockchain ID)
+    // Return the data but flag it as legacy so frontend can show appropriate message
+    const isLegacyTemplate = instance.template.status === 'PUBLISHED' && !instance.template.onChainWorkflowId;
+
+    // Convert BigInt to string for JSON serialization
+    const templateWithSerializedBigInt = {
+      ...instance.template,
+      onChainWorkflowId: instance.template.onChainWorkflowId?.toString() || null,
+      isLegacy: isLegacyTemplate,
+    };
+
+    // Serialize BigInt fields in transitions (executionCost)
+    // Note: 'any' cast needed because Prisma include types don't expose all fields in TypeScript
+    const serializedTransitions = instance.transitions.map(t => {
+      const transition = t as typeof t & { executionCost?: bigint | null };
+      return {
+        ...transition,
+        executionCost: transition.executionCost?.toString() || null,
+      };
+    });
+
     res.json({
       success: true,
       data: {
         ...instance,
+        // Convert instance workflowId BigInt to string
+        workflowId: instance.workflowId?.toString() || null,
+        template: templateWithSerializedBigInt,
+        transitions: serializedTransitions,
         currentStateName,
+        // Flag legacy instances that can't be transitioned
+        isLegacy: isLegacyTemplate,
+        legacyMessage: isLegacyTemplate 
+          ? 'This workflow uses a template created before blockchain enforcement. Transitions are disabled.'
+          : null,
       },
     });
   } catch (error) {
@@ -242,7 +273,8 @@ workflowInstancesRouter.get('/:id', requireAuth, async (req: Request, res: Respo
 
 /**
  * Create a new workflow instance.
- * Returns an unsigned deploy for the user to sign.
+ * Uses server-side signing to create the workflow on-chain.
+ * The workflow instance gets its own unique on-chain workflowId.
  */
 workflowInstancesRouter.post('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -255,6 +287,15 @@ workflowInstancesRouter.post('/', requireAuth, async (req: Request, res: Respons
       throw createError('templateId is required', 400, 'VALIDATION_ERROR');
     }
 
+    // Check if server-side signing is available
+    if (!isServerSigningAvailable()) {
+      throw createError(
+        'Server-side signing not available. Contact administrator.',
+        500,
+        'SIGNING_UNAVAILABLE'
+      );
+    }
+
     // Verify template exists and is published
     const template = await prisma.workflowTemplate.findUnique({
       where: { id: templateId },
@@ -262,6 +303,17 @@ workflowInstancesRouter.post('/', requireAuth, async (req: Request, res: Respons
 
     if (!template || template.status !== 'PUBLISHED') {
       throw createError('Workflow template not found or not published', 404, 'TEMPLATE_NOT_FOUND');
+    }
+
+    // CRITICAL: Reject legacy templates that were published before blockchain enforcement
+    // These templates must be republished to get an onChainWorkflowId
+    if (!template.onChainWorkflowId) {
+      throw createError(
+        'Template was created before blockchain enforcement and must be republished. ' +
+        'Please archive this template and create a new one, or contact an administrator.',
+        409,
+        'LEGACY_TEMPLATE_NO_BLOCKCHAIN_ID'
+      );
     }
 
     // Get initial state
@@ -278,7 +330,7 @@ workflowInstancesRouter.post('/', requireAuth, async (req: Request, res: Respons
     });
     const orgId = orgUser?.orgId || template.orgId;
 
-    // Create instance in database (status: DRAFT until blockchain confirmation)
+    // Create instance in database (status: PENDING - will get workflowId after confirmation)
     const instance = await prisma.workflowInstance.create({
       data: {
         orgId,
@@ -287,68 +339,83 @@ workflowInstancesRouter.post('/', requireAuth, async (req: Request, res: Respons
         description: data.description,
         data: JSON.parse(JSON.stringify(data.data || {})), // Ensure JSON-serializable
         currentState: initialState.id,
-        status: 'DRAFT',
+        status: 'PENDING', // Instance is pending until on-chain confirmation
         dueDate: data.slaDeadline ? new Date(data.slaDeadline) : null,
         creatorId: req.user!.userId,
       },
     });
 
-    // Build unsigned deploy for blockchain
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.userId },
-    });
-
-    if (!user) {
-      throw createError('User not found', 404, 'USER_NOT_FOUND');
-    }
-
-    // Check if user has a wallet connected - if not, skip blockchain recording
-    if (!user.publicKey) {
-      logger.warn('User has no wallet connected. Instance created without blockchain record.');
-      
-      res.status(201).json({
-        success: true,
-        data: {
-          instance,
-          deploy: null,
-          message: 'Workflow instance created. Connect a Casper wallet to record on blockchain.',
-        },
-      });
-      return;
-    }
-
-    // Use template metadata or contract hash for on-chain reference
+    // Build hashes for on-chain registration
+    // Use template ID + instance ID as unique reference
     const templateHashString = template.contractHash || sha256Hex(JSON.stringify(template.states));
     const templateHashBytes = hexToBytes(templateHashString);
-    const dataHashBytes = sha256Bytes(JSON.stringify(data.data || {}));
+    const dataHashBytes = sha256Bytes(JSON.stringify({
+      instanceId: instance.id,
+      templateId: template.id,
+      data: data.data || {},
+    }));
 
-    const deploy = buildCreateWorkflowDeploy(
-      user.publicKey,
+    // Submit create_workflow to blockchain using server-side signing
+    const result = await createWorkflowInstanceOnChain(
+      instance.id,
       templateHashBytes,
       dataHashBytes
     );
 
-    if (!deploy) {
-      // Contract not configured - return instance without blockchain deploy
-      logger.warn('Contract not configured. Instance created without blockchain record.');
-      
-      res.status(201).json({
-        success: true,
-        data: {
-          instance,
-          deploy: null,
-          message: 'Instance created. Blockchain recording unavailable (contract not configured).',
-        },
-      });
-      return;
+    if (!result.success || !result.deployHash) {
+      // Delete the instance since we couldn't submit to blockchain
+      await prisma.workflowInstance.delete({ where: { id: instance.id } });
+      throw createError(
+        result.error || 'Failed to submit workflow to blockchain',
+        500,
+        'BLOCKCHAIN_SUBMIT_FAILED'
+      );
     }
+
+    // Update instance with deploy hash
+    await prisma.workflowInstance.update({
+      where: { id: instance.id },
+      data: { deployHash: result.deployHash },
+    });
+
+    // Record initial transition
+    await prisma.workflowTransition.create({
+      data: {
+        instanceId: instance.id,
+        fromState: 0, // Initial state
+        toState: initialState.id,
+        action: 'CREATE',
+        actorId: req.user!.userId,
+        deployHash: result.deployHash,
+        status: 'PENDING',
+      },
+    });
+
+    // Queue background job for confirmation polling and workflow ID extraction
+    await addInstanceRegistrationJob(result.deployHash, instance.id, 1);
+
+    // Schedule SLA monitoring if deadline set
+    if (instance.dueDate) {
+      await addSlaMonitorJob(instance.id, instance.dueDate);
+    }
+
+    logger.info({
+      instanceId: instance.id,
+      deployHash: result.deployHash,
+      templateId: template.id,
+      userId: req.user!.userId,
+    }, 'Workflow instance creation submitted to blockchain');
 
     res.status(201).json({
       success: true,
       data: {
-        instance,
-        deploy: DeployUtil.deployToJson(deploy),
-        message: 'Sign the deploy with your wallet and submit to /workflow-instances/:id/submit',
+        instance: {
+          ...instance,
+          deployHash: result.deployHash,
+        },
+        deployHash: result.deployHash,
+        explorerUrl: `https://testnet.cspr.live/deploy/${result.deployHash}`,
+        message: 'Workflow instance submitted to blockchain. Waiting for confirmation.',
       },
     });
   } catch (error) {
@@ -358,6 +425,7 @@ workflowInstancesRouter.post('/', requireAuth, async (req: Request, res: Respons
 
 /**
  * Submit a signed deploy for a workflow instance creation.
+ * DEPRECATED: Instance creation now uses server-side signing.
  */
 workflowInstancesRouter.post(
   '/:id/submit',
@@ -429,7 +497,8 @@ workflowInstancesRouter.post(
 
 /**
  * Transition workflow state.
- * Returns an unsigned deploy for approval/rejection.
+ * ALL transitions are recorded on-chain using server-side signing.
+ * No off-chain fallback - blockchain is mandatory.
  */
 workflowInstancesRouter.post(
   '/:id/transition',
@@ -456,7 +525,8 @@ workflowInstancesRouter.post(
       const pendingTransition = await prisma.workflowTransition.findFirst({
         where: {
           instanceId: id,
-          status: 'PENDING',
+          // Note: Using 'as any' because ONCHAIN_PENDING may not be in generated types yet
+          status: { in: ['PENDING', 'ONCHAIN_PENDING'] as any },
         },
       });
 
@@ -480,70 +550,80 @@ workflowInstancesRouter.post(
         throw createError('You do not have permission for this transition', 403, 'FORBIDDEN');
       }
 
-      // Get user for deploy
-      const user = await prisma.user.findUnique({
-        where: { id: req.user!.userId },
-      });
-
-      if (!user) {
-        throw createError('User not found', 404, 'USER_NOT_FOUND');
+      // Verify instance has an on-chain workflow ID - REQUIRED for blockchain transitions
+      // This is the instance's own workflow ID, not the template's
+      const instanceWorkflowId = instance.workflowId;
+      
+      if (!instanceWorkflowId) {
+        // Instance was created but doesn't have on-chain ID yet
+        if (instance.status === 'PENDING' && instance.deployHash) {
+          throw createError(
+            'Workflow instance is still being confirmed on-chain. Please wait a moment and try again.',
+            409,
+            'INSTANCE_PENDING_CONFIRMATION'
+          );
+        }
+        throw createError(
+          'Workflow instance is not registered on-chain. This may be a legacy instance.',
+          409,
+          'INSTANCE_NOT_REGISTERED'
+        );
       }
 
+      // Import server-side signing functions
+      const { 
+        buildTransitionStateDeployServerSide, 
+        signAndSubmitDeployServerSide,
+        isServerSigningAvailable 
+      } = await import('../lib/casper.js');
+
+      if (!isServerSigningAvailable()) {
+        throw createError(
+          'Server-side signing not available. Contact administrator.',
+          500,
+          'SIGNING_UNAVAILABLE'
+        );
+      }
+
+      // Build server-side transition deploy using deployer key
       const roleMask = await getUserRoleMask(req.user!.userId);
       const commentHash = comment ? sha256Bytes(comment) : new Uint8Array(32);
 
-      // Build unsigned deploy
-      const deploy = buildTransitionStateDeploy(
-        user.publicKey || '',
-        instance.workflowId?.toString() || '0',
+      const deploy = buildTransitionStateDeployServerSide(
+        instanceWorkflowId.toString(),
         toState,
         roleMask,
         commentHash
       );
 
       if (!deploy) {
-        // Contract not configured - perform off-chain transition only
-        logger.warn('Contract not configured. Transition recorded off-chain only.');
-
-        // Update instance
-        const states = instance.template.states as Array<{ id: number; isTerminal: boolean }>;
-        const isTerminal = states.find(s => s.id === toState)?.isTerminal || false;
-
-        await prisma.$transaction([
-          prisma.workflowInstance.update({
-            where: { id },
-            data: {
-              currentState: toState,
-              status: isTerminal ? 'COMPLETED' : 'PENDING',
-            },
-          }),
-          prisma.workflowTransition.create({
-            data: {
-              instanceId: id,
-              fromState: instance.currentState,
-              toState,
-              action: 'TRANSITION',
-              actorId: req.user!.userId,
-              comment,
-              status: 'CONFIRMED',
-            },
-          }),
-        ]);
-
-        res.json({
-          success: true,
-          data: {
-            instanceId: id,
-            fromState: instance.currentState,
-            toState,
-            deploy: null,
-            message: 'Transition recorded (off-chain only - contract not configured)',
-          },
-        });
-        return;
+        throw createError(
+          'Failed to build transition deploy',
+          500,
+          'DEPLOY_BUILD_FAILED'
+        );
       }
 
-      // Create pending transition record
+      // Sign and submit deploy using server deployer key
+      const deployHash = await signAndSubmitDeployServerSide(deploy);
+
+      if (!deployHash) {
+        throw createError(
+          'Failed to submit deploy to Casper network',
+          500,
+          'DEPLOY_SUBMIT_FAILED'
+        );
+      }
+
+      logger.info({ 
+        instanceId: id, 
+        deployHash, 
+        fromState: instance.currentState, 
+        toState,
+        instanceWorkflowId: instanceWorkflowId.toString()
+      }, 'Transition deploy submitted to Casper network');
+
+      // Create transition record with ONCHAIN_PENDING status
       const transition = await prisma.workflowTransition.create({
         data: {
           instanceId: id,
@@ -552,10 +632,23 @@ workflowInstancesRouter.post(
           action: 'TRANSITION',
           actorId: req.user!.userId,
           comment,
-          status: 'PENDING',
+          deployHash,
+          // Note: Using 'as any' because ONCHAIN_PENDING may not be in generated types yet
+          status: 'ONCHAIN_PENDING' as any,
         },
       });
 
+      // Queue background job for confirmation polling
+      const { addDeployConfirmationJob } = await import('../jobs/deploy-confirmation.js');
+      await addDeployConfirmationJob(
+        deployHash,
+        transition.id,
+        id,
+        toState,
+        0 // initial attempt
+      );
+
+      // Return immediately with deploy hash - confirmation is async
       res.json({
         success: true,
         data: {
@@ -563,8 +656,10 @@ workflowInstancesRouter.post(
           transitionId: transition.id,
           fromState: instance.currentState,
           toState,
-          deploy: DeployUtil.deployToJson(deploy),
-          message: 'Sign the deploy with your wallet and submit to /workflow-instances/:id/transition/submit',
+          deployHash,
+          status: 'ONCHAIN_PENDING',
+          explorerUrl: `https://testnet.cspr.live/deploy/${deployHash}`,
+          message: 'Transition submitted to Casper network. Waiting for confirmation.',
         },
       });
     } catch (error) {
@@ -774,6 +869,45 @@ workflowInstancesRouter.get(
           data: {
             transitions: [],
             message: 'Workflow is completed',
+          },
+        });
+        return;
+      }
+
+      // Legacy templates cannot have transitions
+      if (instance.template.status === 'PUBLISHED' && !instance.template.onChainWorkflowId) {
+        res.json({
+          success: true,
+          data: {
+            transitions: [],
+            message: 'Legacy template - transitions disabled. Template must be republished.',
+            isLegacy: true,
+          },
+        });
+        return;
+      }
+
+      // Instance without on-chain workflowId cannot transition
+      if (!instance.workflowId) {
+        // Check if instance is still pending confirmation
+        if (instance.status === 'PENDING' && instance.deployHash) {
+          res.json({
+            success: true,
+            data: {
+              transitions: [],
+              message: 'Instance is pending blockchain confirmation. Please wait.',
+              isPending: true,
+            },
+          });
+          return;
+        }
+        // Legacy instance without workflowId
+        res.json({
+          success: true,
+          data: {
+            transitions: [],
+            message: 'Legacy instance - transitions disabled. Create a new workflow instance.',
+            isLegacy: true,
           },
         });
         return;

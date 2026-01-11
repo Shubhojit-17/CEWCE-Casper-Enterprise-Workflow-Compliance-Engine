@@ -68,11 +68,16 @@ export interface WorkflowTemplate {
   autoEscalate: boolean;
   metadata: Record<string, unknown>;
   contractHash: string | null;
+  registrationDeployHash: string | null;
+  onChainWorkflowId: string | null;
   status: TemplateStatus;
   publishedAt: string | null;
   archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  // Legacy template flag - templates published before blockchain enforcement
+  isLegacy?: boolean;
+  legacyMessage?: string | null;
 }
 
 export type TemplateStatus = 'DRAFT' | 'PUBLISHED' | 'DEPRECATED' | 'ARCHIVED';
@@ -115,6 +120,9 @@ export interface WorkflowInstance {
   template?: WorkflowTemplate;
   creator?: User;
   transitions?: WorkflowTransition[];
+  // Legacy instance flag - instances from templates without blockchain enforcement
+  isLegacy?: boolean;
+  legacyMessage?: string | null;
 }
 
 export type InstanceStatus = 'DRAFT' | 'PENDING' | 'COMPLETED' | 'CANCELLED' | 'ESCALATED';

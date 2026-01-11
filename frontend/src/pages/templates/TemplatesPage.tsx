@@ -2,7 +2,7 @@
 // Templates Page
 // =============================================================================
 
-import { useState, Fragment } from 'react';
+import { useState, Fragment, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, Transition } from '@headlessui/react';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
@@ -44,6 +44,7 @@ export function TemplatesPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<WorkflowTemplate | null>(null);
+  const [publishingTemplateId, setPublishingTemplateId] = useState<string | null>(null);
 
   const {
     register,
@@ -59,14 +60,26 @@ export function TemplatesPage() {
     formState: { errors: editErrors },
   } = useForm<CreateTemplateForm>();
 
-  // Fetch templates
+  // Fetch templates with automatic polling when pending confirmations exist
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ['templates'],
     queryFn: async () => {
       const response = await api.get<{ data: { workflows: WorkflowTemplate[] } }>('/workflows');
       return response.data.data.workflows || [];
     },
+    // Poll every 3 seconds when there are pending templates
+    refetchInterval: (query) => {
+      const data = query.state.data as WorkflowTemplate[] | undefined;
+      if (!data) return false;
+      const hasPending = data.some(t => t.registrationDeployHash && !t.onChainWorkflowId);
+      return hasPending ? 3000 : false;
+    },
   });
+
+  // Check if any templates are pending blockchain confirmation
+  const hasPendingTemplates = useMemo(() => {
+    return templates.some(t => t.registrationDeployHash && !t.onChainWorkflowId);
+  }, [templates]);
 
   // Create mutation
   const createMutation = useMutation({
@@ -100,17 +113,30 @@ export function TemplatesPage() {
   // Publish mutation
   const publishMutation = useMutation({
     mutationFn: async (id: string) => {
+      setPublishingTemplateId(id);
       const response = await api.patch(`/workflows/${id}`, {
         status: 'PUBLISHED' as TemplateStatus,
       });
       return response.data;
     },
-    onSuccess: () => {
-      toast.success('Template published');
+    onSuccess: (data) => {
+      // Check if we got an onChainWorkflowId (immediate confirmation) or just a deployHash (pending)
+      const template = data?.data;
+      if (template?.onChainWorkflowId) {
+        toast.success('Template published successfully!');
+      } else if (template?.registrationDeployHash) {
+        toast.success('Deploy submitted! Template will be published once confirmed on-chain.');
+      } else {
+        toast.success('Template updated');
+      }
       queryClient.invalidateQueries({ queryKey: ['templates'] });
+      setPublishingTemplateId(null);
     },
-    onError: () => {
-      toast.error('Failed to publish template');
+    onError: (error: unknown) => {
+      const axiosError = error as { response?: { data?: { error?: { message?: string } } } };
+      const errorMessage = axiosError.response?.data?.error?.message || 'Failed to publish template';
+      toast.error(errorMessage);
+      setPublishingTemplateId(null);
     },
   });
 
@@ -220,14 +246,26 @@ export function TemplatesPage() {
                     <h3 className="text-lg font-medium text-gray-900">
                       {template.name}
                     </h3>
-                    <span className={getStatusBadge(template.status)}>
-                      {template.status}
-                    </span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={getStatusBadge(template.status)}>
+                        {template.status}
+                      </span>
+                      {template.isLegacy && (
+                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                          Legacy
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <span className="text-sm text-gray-500">
                     v{template.version}
                   </span>
                 </div>
+                {template.isLegacy && (
+                  <p className="mt-2 text-xs text-amber-600">
+                    Not registered on blockchain. Must be republished.
+                  </p>
+                )}
                 {template.description && (
                   <p className="mt-2 text-sm text-gray-500 line-clamp-2">
                     {template.description}
@@ -242,19 +280,20 @@ export function TemplatesPage() {
                   Created {formatDate(template.createdAt)}
                 </div>
                 <div className="mt-4 pt-4 border-t border-gray-200 flex items-center gap-2">
-                  {template.status === 'DRAFT' && (
+                  {template.status === 'DRAFT' && !template.registrationDeployHash && (
                     <>
                       <button
                         onClick={() => publishMutation.mutate(template.id)}
-                        disabled={publishMutation.isPending}
+                        disabled={publishingTemplateId === template.id}
                         className="btn-success btn-sm flex-1"
                       >
-                        Publish
+                        {publishingTemplateId === template.id ? 'Submitting...' : 'Publish'}
                       </button>
                       <button 
                         onClick={() => openEditModal(template)}
                         className="btn-secondary btn-sm"
                         title="Edit template"
+                        disabled={publishingTemplateId === template.id}
                       >
                         <PencilIcon className="h-4 w-4" />
                       </button>
@@ -265,15 +304,34 @@ export function TemplatesPage() {
                           }
                         }}
                         className="btn-danger btn-sm"
+                        disabled={publishingTemplateId === template.id}
                       >
                         <TrashIcon className="h-4 w-4" />
                       </button>
                     </>
                   )}
-                  {template.status === 'PUBLISHED' && (
+                  {template.registrationDeployHash && !template.onChainWorkflowId && (
+                    <div className="flex items-center gap-2 text-sm text-yellow-600">
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Confirming on blockchain...</span>
+                    </div>
+                  )}
+                  {template.status === 'PUBLISHED' && template.onChainWorkflowId && (
                     <span className="text-sm text-green-600">
                       Active - used for new workflows
                     </span>
+                  )}
+                  {template.isLegacy && !template.registrationDeployHash && (
+                    <button
+                      onClick={() => publishMutation.mutate(template.id)}
+                      disabled={publishingTemplateId === template.id}
+                      className="btn-warning btn-sm flex-1"
+                    >
+                      {publishingTemplateId === template.id ? 'Registering...' : 'Register on Blockchain'}
+                    </button>
                   )}
                 </div>
               </div>

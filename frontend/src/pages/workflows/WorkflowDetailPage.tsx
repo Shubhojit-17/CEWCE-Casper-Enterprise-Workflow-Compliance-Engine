@@ -65,7 +65,7 @@ export function WorkflowDetailPage() {
   // Check for valid ID - must exist and not be "undefined" string
   const isValidId = Boolean(id && id !== 'undefined');
 
-  // Fetch workflow instance
+  // Fetch workflow instance with auto-refresh for pending states
   const { data: workflow, isLoading: workflowLoading, error: workflowError } = useQuery({
     queryKey: ['workflow', id],
     queryFn: async () => {
@@ -76,9 +76,25 @@ export function WorkflowDetailPage() {
     },
     enabled: isValidId,
     retry: false,
+    // Auto-refetch every 3 seconds if there are pending transitions
+    refetchInterval: (query) => {
+      const data = query.state.data as WorkflowInstance | undefined;
+      const hasPendingTransitions = data?.transitions?.some(
+        (t: { status: string }) => t.status === 'PENDING' || t.status === 'ONCHAIN_PENDING'
+      );
+      return hasPendingTransitions ? 3000 : false;
+    },
   });
 
-  // Fetch available transitions
+  // Check if there are any pending transitions (block new actions)
+  const hasPendingTransition = workflow?.transitions?.some(
+    (t: { status: string }) => t.status === 'PENDING' || t.status === 'ONCHAIN_PENDING'
+  );
+
+  // Check if workflow is completed
+  const isWorkflowCompleted = workflow?.status === 'COMPLETED';
+
+  // Fetch available transitions - skip if workflow is completed
   const { data: availableTransitions = [] } = useQuery<AvailableTransition[]>({
     queryKey: ['workflow-transitions', id],
     queryFn: async () => {
@@ -87,8 +103,12 @@ export function WorkflowDetailPage() {
       );
       return response.data.data.transitions || [];
     },
-    enabled: isValidId && !!workflow,
+    enabled: isValidId && !!workflow && !isWorkflowCompleted,
     retry: false,
+    // Refetch when workflow data changes
+    refetchInterval: (query) => {
+      return hasPendingTransition ? 3000 : false;
+    },
   });
 
   // Fetch documents
@@ -380,42 +400,65 @@ export function WorkflowDetailPage() {
         </div>
       </div>
 
+      {/* Legacy Template Warning */}
+      {workflow.isLegacy && (
+        <div className="rounded-lg bg-amber-50 border border-amber-200 p-4">
+          <div className="flex">
+            <ExclamationTriangleIcon className="h-5 w-5 text-amber-400" />
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-amber-800">Legacy Template</h3>
+              <p className="mt-1 text-sm text-amber-700">
+                {workflow.legacyMessage || 'This workflow uses a template created before blockchain enforcement. Transitions are disabled.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Actions */}
-          {availableTransitions && availableTransitions.length > 0 && (
+          {/* Actions - hidden when workflow is completed or has pending transitions */}
+          {availableTransitions && availableTransitions.length > 0 && !workflow.isLegacy && !isWorkflowCompleted && (
             <div className="card">
               <div className="card-header">
                 <h2 className="text-lg font-medium text-gray-900">Available Actions</h2>
               </div>
               <div className="card-body">
-                <div className="flex flex-wrap gap-3">
-                  {availableTransitions.map((transition) => (
-                    <button
-                      key={`${transition.name}-${transition.toState}`}
-                      onClick={() => handleTransition(transition)}
-                      className={
-                        transition.name === 'approve'
-                          ? 'btn-success'
-                          : transition.name === 'reject'
-                          ? 'btn-danger'
-                          : 'btn-secondary'
-                      }
-                    >
-                      {transition.name === 'approve' && (
-                        <CheckCircleIcon className="h-5 w-5 mr-2" />
-                      )}
-                      {transition.name === 'reject' && (
-                        <XCircleIcon className="h-5 w-5 mr-2" />
-                      )}
-                      {transition.name === 'escalate' && (
-                        <ExclamationTriangleIcon className="h-5 w-5 mr-2" />
-                      )}
-                      {transition.name.charAt(0).toUpperCase() + transition.name.slice(1)}
-                    </button>
-                  ))}
-                </div>
+                {hasPendingTransition ? (
+                  <div className="flex items-center gap-2 text-yellow-600">
+                    <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                    <span>Waiting for pending transition to complete...</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-3">
+                    {availableTransitions.map((transition) => (
+                      <button
+                        key={`${transition.name}-${transition.toState}`}
+                        onClick={() => handleTransition(transition)}
+                        disabled={transitionMutation.isPending}
+                        className={
+                          transition.name === 'approve'
+                            ? 'btn-success'
+                            : transition.name === 'reject'
+                            ? 'btn-danger'
+                            : 'btn-secondary'
+                        }
+                      >
+                        {transition.name === 'approve' && (
+                          <CheckCircleIcon className="h-5 w-5 mr-2" />
+                        )}
+                        {transition.name === 'reject' && (
+                          <XCircleIcon className="h-5 w-5 mr-2" />
+                        )}
+                        {transition.name === 'escalate' && (
+                          <ExclamationTriangleIcon className="h-5 w-5 mr-2" />
+                        )}
+                        {transitionMutation.isPending ? 'Processing...' : transition.name.charAt(0).toUpperCase() + transition.name.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -469,21 +512,23 @@ export function WorkflowDetailPage() {
                             <div>
                               <span
                                 className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${
-                                  transition.status === 'CONFIRMED'
+                                  transition.status === 'CONFIRMED' || transition.status === 'CONFIRMED_ONCHAIN'
                                     ? 'bg-green-500'
-                                    : transition.status === 'FAILED'
+                                    : transition.status === 'FAILED' || transition.status === 'FAILED_ONCHAIN'
                                     ? 'bg-red-500'
-                                    : transition.status === 'PENDING'
+                                    : transition.status === 'PENDING' || transition.status === 'ONCHAIN_PENDING'
                                     ? 'bg-yellow-500'
                                     : 'bg-gray-500'
                                 }`}
                               >
-                                {transition.status === 'CONFIRMED' ? (
+                                {transition.status === 'CONFIRMED' || transition.status === 'CONFIRMED_ONCHAIN' ? (
                                   <CheckCircleIcon className="h-5 w-5 text-white" />
-                                ) : transition.status === 'FAILED' ? (
+                                ) : transition.status === 'FAILED' || transition.status === 'FAILED_ONCHAIN' ? (
                                   <XCircleIcon className="h-5 w-5 text-white" />
-                                ) : (
+                                ) : transition.status === 'PENDING' || transition.status === 'ONCHAIN_PENDING' ? (
                                   <ArrowPathIcon className="h-5 w-5 text-white animate-spin" />
+                                ) : (
+                                  <CheckCircleIcon className="h-5 w-5 text-white" />
                                 )}
                               </span>
                             </div>

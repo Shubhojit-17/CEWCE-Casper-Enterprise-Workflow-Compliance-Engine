@@ -10,7 +10,13 @@ import { prisma } from '../lib/prisma.js';
 import { TemplateStatus, InstanceStatus, type Prisma } from '@prisma/client';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { createError } from '../middleware/error-handler.js';
-import { sha256Hex } from '../lib/crypto.js';
+import { sha256Hex, sha256Bytes } from '../lib/crypto.js';
+import { 
+  registerWorkflowTemplateOnChain, 
+  isServerSigningAvailable,
+} from '../lib/casper.js';
+import { addTemplateRegistrationJob } from '../jobs/template-registration.js';
+import { logger } from '../lib/logger.js';
 
 export const workflowsRouter = Router();
 
@@ -126,6 +132,8 @@ workflowsRouter.get('/', requireAuth, async (req: Request, res: Response, next: 
           slaDays: true,
           escalationDays: true,
           contractHash: true,
+          onChainWorkflowId: true,
+          registrationDeployHash: true,
           status: true,
           createdAt: true,
           updatedAt: true,
@@ -140,12 +148,20 @@ workflowsRouter.get('/', requireAuth, async (req: Request, res: Response, next: 
     res.json({
       success: true,
       data: {
-        workflows: workflows.map(w => ({
-          ...w,
-          instanceCount: w._count.instances,
-          isActive: w.status === 'PUBLISHED', // Compute isActive for backwards compatibility
-          _count: undefined,
-        })),
+        workflows: workflows.map(w => {
+          // Flag legacy templates (PUBLISHED but no blockchain ID)
+          const isLegacy = w.status === 'PUBLISHED' && !w.onChainWorkflowId;
+          return {
+            ...w,
+            instanceCount: w._count.instances,
+            isActive: w.status === 'PUBLISHED', // Compute isActive for backwards compatibility
+            // Convert BigInt to string for JSON serialization
+            onChainWorkflowId: w.onChainWorkflowId?.toString() || null,
+            _count: undefined,
+            // Legacy template flag
+            isLegacy,
+          };
+        }),
         pagination: {
           page: pageNum,
           limit: limitNum,
@@ -179,12 +195,22 @@ workflowsRouter.get('/:id', requireAuth, async (req: Request, res: Response, nex
       throw createError('Workflow template not found', 404, 'NOT_FOUND');
     }
 
+    // Flag legacy templates (PUBLISHED but no blockchain ID)
+    const isLegacy = workflow.status === 'PUBLISHED' && !workflow.onChainWorkflowId;
+
     res.json({
       success: true,
       data: {
         ...workflow,
         instanceCount: workflow._count.instances,
+        // Convert BigInt to string for JSON serialization
+        onChainWorkflowId: workflow.onChainWorkflowId?.toString() || null,
         _count: undefined,
+        // Legacy template flag
+        isLegacy,
+        legacyMessage: isLegacy 
+          ? 'This template was created before blockchain enforcement. It must be republished or archived.'
+          : null,
       },
     });
   } catch (error) {
@@ -277,7 +303,11 @@ workflowsRouter.post(
 
       res.status(201).json({
         success: true,
-        data: workflow,
+        data: {
+          ...workflow,
+          // Convert BigInt to string for JSON serialization
+          onChainWorkflowId: workflow.onChainWorkflowId?.toString() || null,
+        },
       });
     } catch (error) {
       next(error);
@@ -343,7 +373,10 @@ workflowsRouter.put(
 
         res.json({
           success: true,
-          data: workflow,
+          data: {
+            ...workflow,
+            onChainWorkflowId: workflow.onChainWorkflowId?.toString() || null,
+          },
           message: 'New version created (existing instances preserved)',
         });
       } else {
@@ -371,7 +404,10 @@ workflowsRouter.put(
 
         res.json({
           success: true,
-          data: workflow,
+          data: {
+            ...workflow,
+            onChainWorkflowId: workflow.onChainWorkflowId?.toString() || null,
+          },
         });
       }
     } catch (error) {
@@ -382,6 +418,7 @@ workflowsRouter.put(
 
 /**
  * Partial update of a workflow template (e.g., publish/deprecate).
+ * When publishing, the template is registered on-chain to get an onChainWorkflowId.
  * Requires ADMIN role.
  */
 workflowsRouter.patch(
@@ -410,15 +447,71 @@ workflowsRouter.patch(
 
       const updateData: Record<string, unknown> = {};
       
-      if (data.status) {
-        updateData.status = data.status;
-        if (data.status === 'PUBLISHED' && !existing.publishedAt) {
+      // Handle on-chain registration when publishing
+      if (data.status === 'PUBLISHED' && existing.status !== 'PUBLISHED') {
+        // Check if already registered on-chain
+        if (existing.onChainWorkflowId) {
+          logger.info({ templateId: id, onChainWorkflowId: existing.onChainWorkflowId.toString() }, 
+            'Template already registered on-chain');
+        } else if (!isServerSigningAvailable()) {
+          // Server-side signing not available - warn but allow publish
+          logger.warn({ templateId: id }, 
+            'Server-side signing unavailable. Template will be published without on-chain registration.');
+        } else {
+          // Register template on-chain
+          logger.info({ templateId: id }, 'Registering workflow template on-chain');
+          
+          // Create hashes for on-chain storage
+          const templateDefinition = {
+            states: existing.states,
+            transitions: existing.transitions,
+          };
+          const templateHash = sha256Bytes(JSON.stringify(templateDefinition));
+          
+          const metadata = {
+            name: existing.name,
+            version: existing.version,
+            description: existing.description,
+            contractHash: existing.contractHash,
+          };
+          const metadataHash = sha256Bytes(JSON.stringify(metadata));
+          
+          // Submit registration deploy
+          const registrationResult = await registerWorkflowTemplateOnChain(templateHash, metadataHash);
+          
+          if (!registrationResult.success) {
+            logger.error({ templateId: id, error: registrationResult.error }, 
+              'Failed to register template on-chain');
+            throw createError(
+              `Failed to register template on-chain: ${registrationResult.error}`,
+              500,
+              'CHAIN_REGISTRATION_FAILED'
+            );
+          }
+          
+          // Store the deploy hash and queue background job for confirmation
+          updateData.registrationDeployHash = registrationResult.deployHash;
+          logger.info({ templateId: id, deployHash: registrationResult.deployHash }, 
+            'Template registration deploy submitted');
+          
+          // Queue background job to check for confirmation - don't block the API response
+          // This avoids timeout issues since blockchain confirmation can take 30-60+ seconds
+          await addTemplateRegistrationJob(registrationResult.deployHash!, id);
+          logger.info({ templateId: id, deployHash: registrationResult.deployHash }, 
+            'Background job queued for template registration confirmation');
+        }
+        
+        updateData.status = 'PUBLISHED';
+        if (!existing.publishedAt) {
           updateData.publishedAt = new Date();
         }
+      } else if (data.status) {
+        updateData.status = data.status;
         if (data.status === 'ARCHIVED') {
           updateData.archivedAt = new Date();
         }
       }
+      
       if (data.name) updateData.name = data.name;
       if (data.description !== undefined) updateData.description = data.description;
 
@@ -429,7 +522,11 @@ workflowsRouter.patch(
 
       res.json({
         success: true,
-        data: workflow,
+        data: {
+          ...workflow,
+          // Convert BigInt to string for JSON serialization
+          onChainWorkflowId: workflow.onChainWorkflowId?.toString() || null,
+        },
       });
     } catch (error) {
       next(error);

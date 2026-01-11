@@ -140,11 +140,14 @@ export function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
     DRAFT: 'badge-neutral',
     PENDING: 'badge-info',
+    ONCHAIN_PENDING: 'badge-info',
     COMPLETED: 'badge-success',
     CANCELLED: 'badge-danger',
     ESCALATED: 'badge-warning',
     CONFIRMED: 'badge-success',
+    CONFIRMED_ONCHAIN: 'badge-success',
     FAILED: 'badge-danger',
+    FAILED_ONCHAIN: 'badge-danger',
     TIMEOUT: 'badge-warning',
   };
   return colors[status] || 'badge-neutral';
