@@ -472,7 +472,8 @@ export async function submitDeploy(signedDeployJson: unknown): Promise<string> {
     throw new Error('Invalid deploy JSON');
   }
 
-  const deployHash = await casperClient.putDeploy(deploy.val);
+  // Use our custom putDeploy with CSPR.cloud authorization
+  const deployHash = await putDeployWithAuth(deploy.val);
   logger.info({ deployHash }, 'Deploy submitted to network');
   
   return deployHash;
@@ -630,6 +631,41 @@ export function signDeployServerSide(deploy: DeployType): DeployType | null {
 }
 
 /**
+ * Submit a signed deploy to the network using authorized RPC.
+ * Uses CSPR.cloud authorization header.
+ */
+async function putDeployWithAuth(signedDeploy: DeployType): Promise<string> {
+  const deployJson = DeployUtil.deployToJson(signedDeploy);
+  
+  const body = JSON.stringify({
+    id: Date.now(),
+    jsonrpc: '2.0',
+    method: 'account_put_deploy',
+    params: { deploy: deployJson.deploy },
+  });
+  
+  const response = await rpcFetch(config.casperNodeUrl, {
+    method: 'POST',
+    body,
+  });
+  
+  if (!response.ok) {
+    const text = await response.text();
+    logger.error({ status: response.status, body: text }, 'Deploy submission failed');
+    throw new Error(`Deploy submission failed: ${response.status}`);
+  }
+  
+  const result = await response.json() as { error?: { code?: number; data?: unknown; message?: string }; result?: { deploy_hash?: string } };
+  
+  if (result.error) {
+    logger.error({ error: result.error }, 'Deploy RPC error');
+    throw result.error;
+  }
+  
+  return result.result?.deploy_hash || signedDeploy.hash.toString();
+}
+
+/**
  * Sign and submit a deploy server-side.
  * Used for automated backend operations.
  * 
@@ -643,7 +679,8 @@ export async function signAndSubmitDeployServerSide(deploy: DeployType): Promise
   }
 
   try {
-    const deployHash = await casperClient.putDeploy(signedDeploy);
+    // Use our custom putDeploy with CSPR.cloud authorization
+    const deployHash = await putDeployWithAuth(signedDeploy);
     logger.info({ deployHash }, 'Server-signed deploy submitted to network');
     return deployHash;
   } catch (error) {
