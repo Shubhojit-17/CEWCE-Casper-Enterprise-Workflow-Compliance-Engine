@@ -6,6 +6,12 @@
 // =============================================================================
 
 import 'dotenv/config';
+
+// CRITICAL: Initialize deployer keys BEFORE any other imports
+// This must run before casper.ts is loaded (which happens via server.ts → routes)
+import { initializeDeployerKeys } from './lib/deployer-keys.js';
+initializeDeployerKeys();
+
 import { createServer } from './server.js';
 import { logger } from './lib/logger.js';
 import { prisma } from './lib/prisma.js';
