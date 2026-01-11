@@ -144,13 +144,15 @@ healthRouter.post('/seed', async (req: Request, res: Response) => {
         // Give all main roles to make user functional
         for (const role of [adminRole, approverRole, requesterRole, managerRole]) {
           if (role) {
-            await prisma.userRole.upsert({
-              where: { 
-                userId_roleId_orgId_templateId: { userId: user.id, roleId: role.id, orgId: null, templateId: null }
-              },
-              update: {},
-              create: { userId: user.id, roleId: role.id }
-            }).catch(() => {});
+            // Check if role already exists for this user (handling nullable orgId/templateId)
+            const existing = await prisma.userRole.findFirst({
+              where: { userId: user.id, roleId: role.id, orgId: null, templateId: null }
+            });
+            if (!existing) {
+              await prisma.userRole.create({
+                data: { userId: user.id, roleId: role.id }
+              }).catch(() => {});
+            }
           }
         }
       }
