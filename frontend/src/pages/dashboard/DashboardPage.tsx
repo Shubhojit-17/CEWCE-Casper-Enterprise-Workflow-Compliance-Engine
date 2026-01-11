@@ -2,16 +2,19 @@
 // Dashboard Page
 // =============================================================================
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   DocumentDuplicateIcon,
   ClockIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
+  UserIcon,
 } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { formatRelativeTime, getStateName, getStateColor } from '../../lib/utils';
+import { useAuthStore } from '../../stores/auth';
+import toast from 'react-hot-toast';
 import type { WorkflowInstance, AuditLog } from '../../types';
 
 interface DashboardStats {
@@ -22,12 +25,64 @@ interface DashboardStats {
 }
 
 export function DashboardPage() {
+  const { user } = useAuthStore();
+  const queryClient = useQueryClient();
+  
+  // Check if user can create workflows (REQUESTER, MANAGER, ADMIN)
+  const canCreateWorkflow = user?.roles?.some(r => 
+    ['REQUESTER', 'MANAGER', 'ADMIN'].includes(r)
+  );
+
   // Fetch dashboard stats
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       const response = await api.get<{ success: boolean; data: DashboardStats }>('/workflows/stats');
       return response.data.data || { totalWorkflows: 0, pendingWorkflows: 0, completedWorkflows: 0, escalatedWorkflows: 0 };
+    },
+  });
+
+  // Fetch workflows pending customer confirmation (assigned to current user)
+  const { data: pendingConfirmation = [], isLoading: confirmationLoading } = useQuery({
+    queryKey: ['pending-customer-confirmation'],
+    queryFn: async () => {
+      const response = await api.get<{ success: boolean; data: { instances: WorkflowInstance[] } }>('/workflow-instances', {
+        params: { status: 'PENDING_CUSTOMER_CONFIRMATION', limit: 10 },
+      });
+      return response.data.data?.instances || [];
+    },
+  });
+
+  // Confirm workflow mutation
+  const confirmMutation = useMutation({
+    mutationFn: async (instanceId: string) => {
+      const response = await api.post(`/workflow-instances/${instanceId}/customer/confirm`);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Workflow confirmed successfully');
+      queryClient.invalidateQueries({ queryKey: ['pending-customer-confirmation'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['recent-workflows'] });
+    },
+    onError: () => {
+      toast.error('Failed to confirm workflow');
+    },
+  });
+
+  // Reject workflow mutation
+  const rejectMutation = useMutation({
+    mutationFn: async ({ instanceId, reason }: { instanceId: string; reason?: string }) => {
+      const response = await api.post(`/workflow-instances/${instanceId}/customer/reject`, { reason });
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Workflow rejected');
+      queryClient.invalidateQueries({ queryKey: ['pending-customer-confirmation'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    },
+    onError: () => {
+      toast.error('Failed to reject workflow');
     },
   });
 
@@ -96,10 +151,59 @@ export function DashboardPage() {
             Overview of your workflow engine activity
           </p>
         </div>
-        <Link to="/workflows/new" className="btn-primary">
-          Create Workflow
-        </Link>
+        {canCreateWorkflow && (
+          <Link to="/workflows/new" className="btn-primary">
+            Create Workflow
+          </Link>
+        )}
       </div>
+
+      {/* Pending Customer Confirmation */}
+      {pendingConfirmation.length > 0 && (
+        <div className="card border-2 border-yellow-400 bg-yellow-50">
+          <div className="card-header flex items-center gap-2">
+            <UserIcon className="h-5 w-5 text-yellow-600" />
+            <h2 className="text-lg font-medium text-gray-900">Pending Your Confirmation</h2>
+            <span className="ml-2 px-2 py-1 text-xs font-semibold bg-yellow-200 text-yellow-800 rounded-full">
+              {pendingConfirmation.length}
+            </span>
+          </div>
+          <div className="card-body p-0">
+            <ul className="divide-y divide-yellow-200">
+              {pendingConfirmation.map((workflow) => (
+                <li key={workflow.id} className="px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {workflow.title}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {workflow.template?.name || 'Unknown Template'} • Created {formatRelativeTime(workflow.createdAt)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      <button
+                        onClick={() => rejectMutation.mutate({ instanceId: workflow.id, reason: 'Customer rejected' })}
+                        disabled={rejectMutation.isPending || confirmMutation.isPending}
+                        className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-md disabled:opacity-50"
+                      >
+                        Reject
+                      </button>
+                      <button
+                        onClick={() => confirmMutation.mutate(workflow.id)}
+                        disabled={confirmMutation.isPending || rejectMutation.isPending}
+                        className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md disabled:opacity-50"
+                      >
+                        {confirmMutation.isPending ? 'Confirming...' : 'Confirm'}
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">

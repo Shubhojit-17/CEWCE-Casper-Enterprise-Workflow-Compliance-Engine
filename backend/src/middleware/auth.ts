@@ -94,3 +94,58 @@ export function requireRole(...roles: string[]) {
     next();
   };
 }
+
+/**
+ * Block CUSTOMER role from performing an action.
+ * Customers can only view and upload documents, not perform workflow transitions.
+ * This is a backend-enforced guard - frontend should also hide these actions.
+ */
+export function blockCustomerRole(
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void {
+  if (!req.user) {
+    next(createError('Authentication required', 401, 'UNAUTHORIZED'));
+    return;
+  }
+
+  // Check if user ONLY has CUSTOMER role (no other elevated roles)
+  const isCustomerOnly = 
+    req.user.roles.includes('CUSTOMER') && 
+    !req.user.roles.some(r => ['ADMIN', 'MANAGER', 'APPROVER', 'SENIOR_APPROVER', 'REQUESTER', 'USER'].includes(r));
+
+  if (isCustomerOnly) {
+    next(createError(
+      'Customers cannot perform workflow transitions. Please contact your case manager.',
+      403,
+      'CUSTOMER_NOT_ALLOWED'
+    ));
+    return;
+  }
+
+  next();
+}
+
+/**
+ * Require MANAGER role or higher for administrative actions.
+ */
+export function requireManagerOrAdmin(
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void {
+  if (!req.user) {
+    next(createError('Authentication required', 401, 'UNAUTHORIZED'));
+    return;
+  }
+
+  const hasRole = req.user.roles.some(role => ['MANAGER', 'ADMIN'].includes(role));
+
+  if (!hasRole) {
+    next(createError('Manager or Admin access required', 403, 'FORBIDDEN'));
+    return;
+  }
+
+  next();
+}

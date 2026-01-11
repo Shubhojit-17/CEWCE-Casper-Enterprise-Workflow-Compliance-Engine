@@ -9,10 +9,12 @@ import {
   MagnifyingGlassIcon,
   FunnelIcon,
   PlusIcon,
+  UserIcon,
 } from '@heroicons/react/24/outline';
 import { api } from '../../lib/api';
+import { useAuthStore } from '../../stores/auth';
 import { formatDate, getStateName, getStateColor, getStatusColor } from '../../lib/utils';
-import type { WorkflowInstance } from '../../types';
+import type { WorkflowInstance, User } from '../../types';
 
 interface WorkflowInstancesResponse {
   success: boolean;
@@ -30,12 +32,36 @@ interface WorkflowInstancesResponse {
 export function WorkflowsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') || '');
+  const { user } = useAuthStore();
+
+  // Check if user can create workflows (REQUESTER, MANAGER, ADMIN)
+  const canCreateWorkflow = user?.roles?.some(r => 
+    ['REQUESTER', 'MANAGER', 'ADMIN'].includes(r)
+  );
+
+  // Check if user can filter by customer (APPROVER, MANAGER, ADMIN)
+  const canFilterByCustomer = user?.roles?.some(r => 
+    ['APPROVER', 'SENIOR_APPROVER', 'MANAGER', 'ADMIN'].includes(r)
+  );
 
   const page = parseInt(searchParams.get('page') || '1', 10);
   const status = searchParams.get('status') || '';
+  const customerId = searchParams.get('customerId') || '';
+
+  // Fetch customers list for the filter dropdown (only if user can filter by customer)
+  const { data: customersData } = useQuery({
+    queryKey: ['users-for-filter'],
+    queryFn: async () => {
+      const response = await api.get<{ data: { users: User[] } }>('/users/assignable-customers');
+      return response.data.data.users || [];
+    },
+    enabled: canFilterByCustomer,
+  });
+
+  const customers = customersData || [];
 
   const { data, isLoading } = useQuery({
-    queryKey: ['workflows', page, status, search],
+    queryKey: ['workflows', page, status, search, customerId],
     queryFn: async () => {
       const response = await api.get<WorkflowInstancesResponse>(
         '/workflow-instances',
@@ -45,6 +71,7 @@ export function WorkflowsPage() {
             limit: 10,
             status: status || undefined,
             search: search || undefined,
+            customerId: customerId || undefined,
           },
         }
       );
@@ -73,6 +100,18 @@ export function WorkflowsPage() {
     });
   };
 
+  const handleCustomerFilter = (newCustomerId: string) => {
+    setSearchParams((prev) => {
+      if (newCustomerId) {
+        prev.set('customerId', newCustomerId);
+      } else {
+        prev.delete('customerId');
+      }
+      prev.set('page', '1');
+      return prev;
+    });
+  };
+
   const handlePageChange = (newPage: number) => {
     setSearchParams((prev) => {
       prev.set('page', newPage.toString());
@@ -80,7 +119,7 @@ export function WorkflowsPage() {
     });
   };
 
-  const statuses = ['', 'DRAFT', 'PENDING', 'COMPLETED', 'CANCELLED', 'ESCALATED'];
+  const statuses = ['', 'DRAFT', 'PENDING_CUSTOMER_CONFIRMATION', 'CUSTOMER_CONFIRMED', 'ONCHAIN_PENDING', 'ACTIVE', 'PENDING', 'COMPLETED', 'CANCELLED', 'ESCALATED', 'REJECTED'];
 
   return (
     <div className="space-y-6">
@@ -92,10 +131,12 @@ export function WorkflowsPage() {
             Manage and track all workflow instances
           </p>
         </div>
-        <Link to="/workflows/new" className="btn-primary">
-          <PlusIcon className="h-5 w-5 mr-2" />
-          New Workflow
-        </Link>
+        {canCreateWorkflow && (
+          <Link to="/workflows/new" className="btn-primary">
+            <PlusIcon className="h-5 w-5 mr-2" />
+            New Workflow
+          </Link>
+        )}
       </div>
 
       {/* Filters */}
@@ -131,6 +172,25 @@ export function WorkflowsPage() {
                 ))}
               </select>
             </div>
+
+            {/* Customer Filter - Only for Approvers/Managers/Admins */}
+            {canFilterByCustomer && (
+              <div className="flex items-center gap-2">
+                <UserIcon className="h-5 w-5 text-gray-400" />
+                <select
+                  value={customerId}
+                  onChange={(e) => handleCustomerFilter(e.target.value)}
+                  className="input w-48"
+                >
+                  <option value="">All Customers</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.displayName || c.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </div>
       </div>

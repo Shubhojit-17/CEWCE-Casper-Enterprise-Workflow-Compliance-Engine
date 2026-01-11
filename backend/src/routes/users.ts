@@ -83,6 +83,73 @@ usersRouter.get(
 );
 
 /**
+ * List users who can be assigned as customers.
+ * Available to REQUESTER, MANAGER, ADMIN, and APPROVER roles.
+ * Returns users with USER or CUSTOMER roles.
+ * For non-authorized roles, returns empty list instead of error.
+ */
+usersRouter.get(
+  '/assignable-customers',
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Check if user has permission to assign customers
+      const userRoles = req.user!.roles;
+      const canAssign = userRoles.some(r => 
+        ['REQUESTER', 'MANAGER', 'ADMIN', 'APPROVER', 'SENIOR_APPROVER'].includes(r)
+      );
+      
+      // Return empty list for non-authorized users instead of error
+      if (!canAssign) {
+        res.json({
+          success: true,
+          data: {
+            users: [],
+          },
+        });
+        return;
+      }
+
+      // Find users with USER or CUSTOMER roles
+      const customersAndUsers = await prisma.user.findMany({
+        where: {
+          isActive: true,
+          roles: {
+            some: {
+              role: {
+                name: { in: ['USER', 'CUSTOMER'] },
+              },
+            },
+          },
+        },
+        include: {
+          roles: {
+            include: { role: true },
+          },
+        },
+        orderBy: { email: 'asc' },
+      });
+
+      res.json({
+        success: true,
+        data: {
+          users: customersAndUsers.map(u => ({
+            id: u.id,
+            email: u.email,
+            displayName: u.displayName,
+            firstName: u.firstName,
+            lastName: u.lastName,
+            roles: u.roles.map(r => r.role.name),
+          })),
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
  * Get current user's profile.
  */
 usersRouter.get('/me', requireAuth, async (req: Request, res: Response, next: NextFunction) => {

@@ -44,6 +44,8 @@ model User {
   roles           UserRole[]
   organizationUsers OrganizationUser[]
   createdWorkflows WorkflowInstance[] @relation("InstanceCreator")
+  assignedAsCustomer WorkflowInstance[] @relation("CustomerAssignment")
+  assignedAsApprover WorkflowInstance[] @relation("ApproverAssignment")
   transitions      WorkflowTransition[]
   auditLogs       AuditLog[]
   apiKeys         ApiKey[]
@@ -260,6 +262,10 @@ model WorkflowInstance {
   workflowId   BigInt? @unique // On-chain workflow ID
   deployHash   String? // Initial deploy hash
   
+  // Assignment (NEW - additive fields)
+  assignedCustomerId  String? // Customer assigned to this workflow (can view/upload docs)
+  assignedApproverId  String? // Specific approver assigned by manager
+  
   // SLA Tracking
   dueDate      DateTime?
   escalationDate DateTime?
@@ -274,6 +280,8 @@ model WorkflowInstance {
   organization Organization         @relation(fields: [orgId], references: [id])
   template     WorkflowTemplate     @relation(fields: [templateId], references: [id])
   creator      User                 @relation("InstanceCreator", fields: [creatorId], references: [id])
+  assignedCustomer User?            @relation("CustomerAssignment", fields: [assignedCustomerId], references: [id])
+  assignedApprover User?            @relation("ApproverAssignment", fields: [assignedApproverId], references: [id])
   transitions  WorkflowTransition[]
   documents    WorkflowDocument[]
   comments     WorkflowComment[]
@@ -284,15 +292,23 @@ model WorkflowInstance {
   @@index([status])
   @@index([currentState])
   @@index([workflowId])
+  @@index([assignedCustomerId])
+  @@index([assignedApproverId])
   @@map("workflow_instances")
 }
 
 enum InstanceStatus {
-  DRAFT
-  PENDING
-  COMPLETED
-  CANCELLED
-  ESCALATED
+  DRAFT                           // Initial state, workflow created but not yet confirmed
+  PENDING_CUSTOMER_CONFIRMATION   // Awaiting customer to confirm/reject the workflow
+  CUSTOMER_CONFIRMED              // Customer confirmed, awaiting requester to submit to blockchain
+  ONCHAIN_PENDING                 // Submitted to blockchain, awaiting confirmation
+  ACTIVE                          // On-chain and ready for workflow execution (approvals, transitions)
+  SUBMITTED                       // Legacy: Workflow formally submitted, pending first approval
+  PENDING                         // Legacy: Kept for backward compatibility
+  REJECTED                        // Workflow rejected, can be edited and resubmitted
+  COMPLETED                       // Workflow completed successfully
+  CANCELLED                       // Workflow cancelled
+  ESCALATED                       // Workflow escalated for review
 }
 
 // =============================================================================

@@ -8,6 +8,7 @@ export interface User {
   email: string;
   publicKey: string | null;
   accountHash: string | null;
+  displayName?: string | null;
   firstName: string | null;
   lastName: string | null;
   avatar: string | null;
@@ -123,9 +124,31 @@ export interface WorkflowInstance {
   // Legacy instance flag - instances from templates without blockchain enforcement
   isLegacy?: boolean;
   legacyMessage?: string | null;
+  // NEW flags for corrected business flow
+  isOnChain?: boolean;          // Is workflow registered on blockchain?
+  isPendingApproval?: boolean;  // Awaiting approver review?
+  canApprove?: boolean;         // Can current user approve/reject?
+  canConfirmAsCustomer?: boolean; // Can current user confirm as customer?
+  isCreator?: boolean;          // Is current user the creator?
+  canResubmit?: boolean;        // Can current user resubmit this rejected workflow?
+  // Assigned users
+  assignedCustomerId?: string | null;
+  assignedApproverId?: string | null;
+  assignedCustomer?: User | null;
+  assignedApprover?: User | null;
 }
 
-export type InstanceStatus = 'DRAFT' | 'PENDING' | 'COMPLETED' | 'CANCELLED' | 'ESCALATED';
+export type InstanceStatus = 
+  | 'DRAFT' 
+  | 'PENDING_CUSTOMER_CONFIRMATION'
+  | 'CUSTOMER_CONFIRMED'
+  | 'ONCHAIN_PENDING'
+  | 'ACTIVE'
+  | 'PENDING' 
+  | 'COMPLETED' 
+  | 'CANCELLED' 
+  | 'ESCALATED'
+  | 'REJECTED';
 
 export interface WorkflowTransition {
   id: string;
@@ -145,7 +168,7 @@ export interface WorkflowTransition {
   actor?: User;
 }
 
-export type TransitionStatus = 'PENDING' | 'CONFIRMED' | 'FAILED' | 'TIMEOUT';
+export type TransitionStatus = 'PENDING' | 'ONCHAIN_PENDING' | 'CONFIRMED' | 'CONFIRMED_ONCHAIN' | 'FAILED' | 'FAILED_ONCHAIN' | 'TIMEOUT';
 
 // Audit Types
 export interface AuditLog {
@@ -224,6 +247,8 @@ export interface CreateWorkflowForm {
   title: string;
   description?: string;
   data?: Record<string, unknown>;
+  assignedCustomerId?: string | null;
+  assignedApproverId?: string | null;
 }
 
 export interface TransitionForm {

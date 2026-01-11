@@ -52,14 +52,33 @@ async function handleSuccessfulTransition(
 
   const states = instance.template.states as Array<{
     id: number;
+    name: string;
     isTerminal: boolean;
   }>;
-  const isTerminal = states.find(s => s.id === toState)?.isTerminal || false;
+  const targetState = states.find(s => s.id === toState);
+  const isTerminal = targetState?.isTerminal || false;
+  
+  // Determine the appropriate instance status based on the target state
+  // Check if this is a rejection state (name contains 'reject' or state ID 11)
+  const isRejection = targetState?.name?.toLowerCase().includes('reject') || toState === 11;
 
   // Get the transition for audit log
   const transition = await prisma.workflowTransition.findUnique({
     where: { id: transitionId },
   });
+
+  // Determine new status:
+  // - REJECTED: if target state is a rejection state (allows resubmission)
+  // - COMPLETED: if target state is terminal (approved, cancelled, etc.)
+  // - ACTIVE: otherwise (workflow continues, on-chain and active)
+  let newStatus: 'REJECTED' | 'COMPLETED' | 'ACTIVE';
+  if (isRejection && isTerminal) {
+    newStatus = 'REJECTED'; // Rejected workflows can be resubmitted
+  } else if (isTerminal) {
+    newStatus = 'COMPLETED';
+  } else {
+    newStatus = 'ACTIVE'; // Workflow is on-chain and active
+  }
 
   // Update instance and transition in a transaction
   await prisma.$transaction([
@@ -67,7 +86,9 @@ async function handleSuccessfulTransition(
       where: { id: instanceId },
       data: {
         currentState: toState,
-        status: isTerminal ? 'COMPLETED' : 'PENDING',
+        status: newStatus,
+        // Set completedAt only for truly completed (approved) workflows
+        completedAt: newStatus === 'COMPLETED' ? new Date() : undefined,
       },
     }),
     prisma.workflowTransition.update({
@@ -93,6 +114,8 @@ async function handleSuccessfulTransition(
           fromState: transition?.fromState,
           toState,
           isTerminal,
+          isRejection,
+          newStatus,
           explorerUrl: `https://testnet.cspr.live/deploy/${deployHash}`,
         },
       },

@@ -24,17 +24,18 @@ import { useWalletStore } from '../stores/wallet';
 import { cn, truncateHash } from '../lib/utils';
 
 // Navigation items - Users is only shown to ADMIN
+// Templates only for REQUESTER, MANAGER, ADMIN
 const baseNavigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-  { name: 'Workflows', href: '/workflows', icon: DocumentDuplicateIcon },
-  { name: 'Templates', href: '/templates', icon: ClipboardDocumentListIcon },
-  { name: 'Audit Log', href: '/audit', icon: ShieldCheckIcon },
-  { name: 'Wallet', href: '/wallet', icon: WalletIcon },
-  { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
+  { name: 'Dashboard', href: '/dashboard', icon: HomeIcon, roles: null }, // all roles
+  { name: 'Workflows', href: '/workflows', icon: DocumentDuplicateIcon, roles: null }, // all roles
+  { name: 'Templates', href: '/templates', icon: ClipboardDocumentListIcon, roles: ['REQUESTER', 'MANAGER', 'ADMIN'] },
+  { name: 'Audit Log', href: '/audit', icon: ShieldCheckIcon, roles: ['ADMIN', 'AUDITOR', 'MANAGER'] },
+  { name: 'Wallet', href: '/wallet', icon: WalletIcon, roles: null }, // all roles
+  { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, roles: null }, // all roles
 ];
 
 const adminNavigation = [
-  { name: 'Users', href: '/users', icon: UsersIcon },
+  { name: 'Users', href: '/users', icon: UsersIcon, roles: ['ADMIN'] },
 ];
 
 export function DashboardLayout() {
@@ -45,10 +46,15 @@ export function DashboardLayout() {
   const { publicKey, isConnected, isConnecting, balance, connect } = useWalletStore();
 
   // Build navigation based on user roles
-  const isAdmin = user?.roles?.includes('ADMIN');
-  const navigation = isAdmin 
-    ? [...baseNavigation.slice(0, 4), ...adminNavigation, ...baseNavigation.slice(4)]
-    : baseNavigation;
+  const userRoles = user?.roles || [];
+  const isAdmin = userRoles.includes('ADMIN');
+  
+  // Filter navigation items by role
+  const allNavItems = [...baseNavigation, ...adminNavigation];
+  const navigation = allNavItems.filter(item => {
+    if (!item.roles) return true; // null means all roles can see it
+    return item.roles.some(role => userRoles.includes(role));
+  });
 
   const handleLogout = () => {
     logout();

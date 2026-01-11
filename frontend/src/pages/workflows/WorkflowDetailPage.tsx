@@ -13,6 +13,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
+  ExclamationCircleIcon,
   DocumentTextIcon,
   ClockIcon,
   ArrowUpTrayIcon,
@@ -61,6 +62,7 @@ export function WorkflowDetailPage() {
   const [selectedTransition, setSelectedTransition] = useState<AvailableTransition | null>(null);
   const [comment, setComment] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [approvalComment, setApprovalComment] = useState('');
 
   // Check for valid ID - must exist and not be "undefined" string
   const isValidId = Boolean(id && id !== 'undefined');
@@ -106,7 +108,7 @@ export function WorkflowDetailPage() {
     enabled: isValidId && !!workflow && !isWorkflowCompleted,
     retry: false,
     // Refetch when workflow data changes
-    refetchInterval: (query) => {
+    refetchInterval: () => {
       return hasPendingTransition ? 3000 : false;
     },
   });
@@ -204,6 +206,60 @@ export function WorkflowDetailPage() {
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to submit transition');
+    },
+  });
+
+  // Approve workflow mutation (approver only - triggers blockchain registration)
+  const approveWorkflowMutation = useMutation({
+    mutationFn: async (comment: string) => {
+      const response = await api.post(`/workflow-instances/${id}/transition`, {
+        toState: 10, // Approved state
+        comment,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Workflow approved! Submitting to blockchain...');
+      queryClient.invalidateQueries({ queryKey: ['workflow', id] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to approve workflow');
+    },
+  });
+
+  // Reject workflow mutation (approver only - stays off-chain)
+  const rejectWorkflowMutation = useMutation({
+    mutationFn: async (comment: string) => {
+      const response = await api.post(`/workflow-instances/${id}/transition`, {
+        toState: 11, // Rejected state
+        comment,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Workflow rejected. Requester can make changes and resubmit.');
+      queryClient.invalidateQueries({ queryKey: ['workflow', id] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to reject workflow');
+    },
+  });
+
+  // Resubmit workflow mutation (for rejected off-chain workflows)
+  const resubmitWorkflowMutation = useMutation({
+    mutationFn: async (comment: string) => {
+      const response = await api.post(`/workflow-instances/${id}/resubmit`, {
+        comment,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Workflow resubmitted for approver review.');
+      setApprovalComment('');
+      queryClient.invalidateQueries({ queryKey: ['workflow', id] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to resubmit workflow');
     },
   });
 
@@ -418,8 +474,12 @@ export function WorkflowDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Actions - hidden when workflow is completed or has pending transitions */}
-          {availableTransitions && availableTransitions.length > 0 && !workflow.isLegacy && !isWorkflowCompleted && (
+          {/* Actions - Only show for ACTIVE workflows that are on-chain and ready for transitions */}
+          {availableTransitions && availableTransitions.length > 0 && 
+           !workflow.isLegacy && 
+           !isWorkflowCompleted && 
+           workflow.isOnChain && 
+           workflow.status === 'ACTIVE' && (
             <div className="card">
               <div className="card-header">
                 <h2 className="text-lg font-medium text-gray-900">Available Actions</h2>
@@ -512,7 +572,10 @@ export function WorkflowDetailPage() {
                             <div>
                               <span
                                 className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${
-                                  transition.status === 'CONFIRMED' || transition.status === 'CONFIRMED_ONCHAIN'
+                                  // REJECT actions should always show red, even if status is CONFIRMED
+                                  transition.action === 'REJECT'
+                                    ? 'bg-red-500'
+                                    : transition.status === 'CONFIRMED' || transition.status === 'CONFIRMED_ONCHAIN'
                                     ? 'bg-green-500'
                                     : transition.status === 'FAILED' || transition.status === 'FAILED_ONCHAIN'
                                     ? 'bg-red-500'
@@ -521,7 +584,10 @@ export function WorkflowDetailPage() {
                                     : 'bg-gray-500'
                                 }`}
                               >
-                                {transition.status === 'CONFIRMED' || transition.status === 'CONFIRMED_ONCHAIN' ? (
+                                {/* REJECT actions should show X icon */}
+                                {transition.action === 'REJECT' ? (
+                                  <XCircleIcon className="h-5 w-5 text-white" />
+                                ) : transition.status === 'CONFIRMED' || transition.status === 'CONFIRMED_ONCHAIN' ? (
                                   <CheckCircleIcon className="h-5 w-5 text-white" />
                                 ) : transition.status === 'FAILED' || transition.status === 'FAILED_ONCHAIN' ? (
                                   <XCircleIcon className="h-5 w-5 text-white" />
@@ -544,8 +610,9 @@ export function WorkflowDetailPage() {
                                     {getStateName(transition.toState)}
                                   </span>
                                 </p>
-                                <span className={getStatusColor(transition.status)}>
-                                  {transition.status}
+                                {/* Show REJECTED for REJECT actions, otherwise show the actual status */}
+                                <span className={transition.action === 'REJECT' ? 'text-sm font-medium text-red-600' : getStatusColor(transition.status)}>
+                                  {transition.action === 'REJECT' ? 'REJECTED' : transition.status}
                                 </span>
                               </div>
                               {transition.comment && (
@@ -672,30 +739,166 @@ export function WorkflowDetailPage() {
                     </dd>
                   </div>
                 )}
-                {!workflow.workflowId && !workflow.deployHash && (
+                {workflow.status === 'ONCHAIN_PENDING' && (
+                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                    <span>Awaiting blockchain confirmation...</span>
+                  </div>
+                )}
+                {!workflow.workflowId && !workflow.deployHash && workflow.status !== 'ONCHAIN_PENDING' && workflow.status !== 'CUSTOMER_CONFIRMED' && (
                   <p className="text-sm text-gray-500">
                     Not yet submitted to blockchain
+                  </p>
+                )}
+                {workflow.isPendingApproval && (
+                  <p className="text-sm text-amber-600">
+                    Awaiting approver review. Blockchain registration happens upon approval.
                   </p>
                 )}
               </dl>
             </div>
           </div>
 
+          {/* Approver Action Section - Only for approvers when workflow is pending approval */}
+          {workflow.canApprove && (
+            <div className="card border-2 border-amber-200 bg-amber-50">
+              <div className="card-header bg-amber-100">
+                <h2 className="text-lg font-medium text-amber-900 flex items-center gap-2">
+                  <ExclamationCircleIcon className="h-5 w-5" />
+                  Approval Required
+                </h2>
+              </div>
+              <div className="card-body space-y-4">
+                <p className="text-sm text-gray-700">
+                  This workflow has been confirmed by the customer and is ready for your review.
+                  Approving will register the workflow on the blockchain.
+                </p>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Decision Comment (required for rejection)
+                  </label>
+                  <textarea
+                    value={approvalComment}
+                    onChange={(e) => setApprovalComment(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-enterprise-primary/20"
+                    rows={3}
+                    placeholder="Enter your review comments..."
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => approveWorkflowMutation.mutate(approvalComment)}
+                    disabled={approveWorkflowMutation.isPending || rejectWorkflowMutation.isPending}
+                    className="flex-1 btn-primary flex items-center justify-center gap-2"
+                  >
+                    {approveWorkflowMutation.isPending ? (
+                      <>
+                        <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                        Approving...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircleIcon className="h-5 w-5" />
+                        Approve & Submit to Blockchain
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!approvalComment.trim()) {
+                        toast.error('Please provide a reason for rejection');
+                        return;
+                      }
+                      rejectWorkflowMutation.mutate(approvalComment);
+                    }}
+                    disabled={approveWorkflowMutation.isPending || rejectWorkflowMutation.isPending}
+                    className="flex-1 btn-secondary bg-red-50 text-red-700 border-red-300 hover:bg-red-100 flex items-center justify-center gap-2"
+                  >
+                    {rejectWorkflowMutation.isPending ? (
+                      <>
+                        <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                        Rejecting...
+                      </>
+                    ) : (
+                      <>
+                        <XCircleIcon className="h-5 w-5" />
+                        Reject
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Resubmit Section - For rejected off-chain workflows, shown to creator/requester or assigned customer */}
+          {workflow.canResubmit && (
+            <div className="card border-2 border-blue-200 bg-blue-50">
+              <div className="card-header bg-blue-100">
+                <h2 className="text-lg font-medium text-blue-900 flex items-center gap-2">
+                  <ArrowPathIcon className="h-5 w-5" />
+                  Resubmit for Approval
+                </h2>
+              </div>
+              <div className="card-body space-y-4">
+                <p className="text-sm text-gray-700">
+                  This workflow was rejected. You can upload additional documents and resubmit it for approval.
+                </p>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Resubmission Comment (optional)
+                  </label>
+                  <textarea
+                    value={approvalComment}
+                    onChange={(e) => setApprovalComment(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-enterprise-primary/20"
+                    rows={3}
+                    placeholder="Describe what changes you've made..."
+                  />
+                </div>
+
+                <button
+                  onClick={() => resubmitWorkflowMutation.mutate(approvalComment)}
+                  disabled={resubmitWorkflowMutation.isPending}
+                  className="w-full btn-primary flex items-center justify-center gap-2"
+                >
+                  {resubmitWorkflowMutation.isPending ? (
+                    <>
+                      <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                      Resubmitting...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowPathIcon className="h-5 w-5" />
+                      Resubmit for Approval
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Documents */}
           <div className="card">
             <div className="card-header flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900">Documents</h2>
-              <label className="text-sm text-enterprise-primary hover:underline cursor-pointer flex items-center gap-1">
-                <ArrowUpTrayIcon className="h-4 w-4" />
-                {isUploading ? 'Uploading...' : 'Upload'}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  onChange={handleFileUpload}
-                  disabled={isUploading}
-                />
-              </label>
+              {/* Only show upload button for off-chain workflows or rejected workflows */}
+              {(!workflow.isOnChain || workflow.status === 'REJECTED') && (
+                <label className="text-sm text-enterprise-primary hover:underline cursor-pointer flex items-center gap-1">
+                  <ArrowUpTrayIcon className="h-4 w-4" />
+                  {isUploading ? 'Uploading...' : 'Upload'}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    disabled={isUploading}
+                  />
+                </label>
+              )}
             </div>
             <div className="card-body">
               {documents && documents.length > 0 ? (
@@ -719,17 +922,20 @@ export function WorkflowDetailPage() {
                         >
                           <ArrowDownTrayIcon className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => {
-                            if (confirm('Delete this document?')) {
-                              deleteMutation.mutate(doc.id);
-                            }
-                          }}
-                          className="p-1 text-gray-400 hover:text-red-500"
-                          title="Delete"
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </button>
+                        {/* Only show delete button for off-chain workflows (not yet registered on blockchain) */}
+                        {!workflow?.isOnChain && (
+                          <button
+                            onClick={() => {
+                              if (confirm('Delete this document?')) {
+                                deleteMutation.mutate(doc.id);
+                              }
+                            }}
+                            className="p-1 text-gray-400 hover:text-red-500"
+                            title="Delete"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </li>
                   ))}

@@ -111,12 +111,13 @@ export async function initializeInstanceRegistrationWorker(): Promise<void> {
         }
 
         if (workflowId && workflowId !== '0') {
-          // Update instance with on-chain workflow ID and mark as PENDING (active)
+          // Update instance with on-chain workflow ID and mark as ACTIVE
+          // ACTIVE means the workflow is registered on-chain and ready for transitions
           await prisma.workflowInstance.update({
             where: { id: instanceId },
             data: { 
               workflowId: BigInt(workflowId),
-              status: 'PENDING', // Now active on-chain
+              status: 'ACTIVE', // Now active on-chain, ready for workflow execution
               submittedAt: new Date(),
             },
           });
@@ -127,14 +128,14 @@ export async function initializeInstanceRegistrationWorker(): Promise<void> {
             onChainWorkflowId: workflowId, 
             blockHash: confirmation.blockHash,
             explorerUrl: `https://testnet.cspr.live/deploy/${deployHash}`
-          }, 'Instance registration CONFIRMED with on-chain workflow ID');
+          }, 'Instance registration CONFIRMED with on-chain workflow ID - Status: ACTIVE');
 
           // Update the initial transition record if it exists
           await prisma.workflowTransition.updateMany({
             where: { 
               instanceId, 
-              action: 'CREATE',
-              status: 'PENDING',
+              action: { in: ['CREATE', 'CUSTOMER_CONFIRM', 'SUBMIT_TO_CHAIN', 'APPROVE'] },
+              status: { in: ['PENDING', 'ONCHAIN_PENDING'] as any },
             },
             data: { 
               status: 'CONFIRMED_ONCHAIN',
@@ -145,11 +146,11 @@ export async function initializeInstanceRegistrationWorker(): Promise<void> {
         } else {
           logger.error({ deployHash, instanceId }, 
             'Instance registration confirmed but could not determine workflow ID');
-          // Still mark as pending since on-chain succeeded, we just couldn't get the ID
+          // Still mark as ACTIVE since on-chain succeeded, we just couldn't get the ID
           await prisma.workflowInstance.update({
             where: { id: instanceId },
             data: { 
-              status: 'PENDING',
+              status: 'ACTIVE',
               submittedAt: new Date(),
             },
           });

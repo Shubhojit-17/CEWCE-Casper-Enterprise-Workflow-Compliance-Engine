@@ -6,20 +6,32 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, UserIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
-import type { WorkflowTemplate, CreateWorkflowForm } from '../../types';
+import type { WorkflowTemplate, CreateWorkflowForm, User } from '../../types';
 
 export function CreateWorkflowPage() {
   const navigate = useNavigate();
   const [selectedTemplate, setSelectedTemplate] = useState<WorkflowTemplate | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<CreateWorkflowForm>();
+
+  // Fetch users who can be assigned as customers (USER or CUSTOMER role)
+  const { data: customersData } = useQuery({
+    queryKey: ['users-for-assignment'],
+    queryFn: async () => {
+      const response = await api.get<{ data: { users: User[] } }>('/users/assignable-customers');
+      return response.data.data.users || [];
+    },
+  });
+
+  const customers = customersData || [];
 
   // Fetch templates - filter for PUBLISHED status
   const { data: allTemplates, isLoading: templatesLoading } = useQuery({
@@ -63,6 +75,7 @@ export function CreateWorkflowPage() {
     createMutation.mutate({
       ...data,
       templateId: selectedTemplate.id,
+      assignedCustomerId: selectedCustomerId || null,
     });
   };
 
@@ -175,6 +188,32 @@ export function CreateWorkflowPage() {
                   placeholder="Enter workflow description (optional)"
                   {...register('description')}
                 />
+              </div>
+
+              {/* Customer Assignment */}
+              <div>
+                <label htmlFor="assignedCustomerId" className="label">
+                  <span className="flex items-center gap-2">
+                    <UserIcon className="h-4 w-4" />
+                    Assign to Customer
+                  </span>
+                </label>
+                <select
+                  id="assignedCustomerId"
+                  className="input"
+                  value={selectedCustomerId || ''}
+                  onChange={(e) => setSelectedCustomerId(e.target.value || null)}
+                >
+                  <option value="">No customer assignment (proceed directly)</option>
+                  {customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.email} {customer.firstName || customer.lastName ? `(${[customer.firstName, customer.lastName].filter(Boolean).join(' ')})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  If assigned, the customer must confirm before the workflow proceeds to blockchain.
+                </p>
               </div>
 
               {/* Template Preview */}

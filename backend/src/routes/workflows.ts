@@ -72,11 +72,12 @@ const updateWorkflowSchema = createWorkflowSchema.partial();
  */
 workflowsRouter.get('/stats', requireAuth, async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const [total, pending, completed, escalated] = await Promise.all([
+    const [total, active, completed, escalated] = await Promise.all([
       prisma.workflowInstance.count(),
       prisma.workflowInstance.count({
         where: { 
-          status: InstanceStatus.PENDING,
+          // Count both ACTIVE and legacy PENDING as "active" workflows
+          status: { in: [InstanceStatus.ACTIVE, InstanceStatus.PENDING] },
         },
       }),
       prisma.workflowInstance.count({
@@ -91,7 +92,8 @@ workflowsRouter.get('/stats', requireAuth, async (_req: Request, res: Response, 
       success: true,
       data: {
         totalWorkflows: total,
-        pendingWorkflows: pending,
+        activeWorkflows: active,
+        pendingWorkflows: active, // Keep for backward compatibility
         completedWorkflows: completed,
         escalatedWorkflows: escalated,
       },

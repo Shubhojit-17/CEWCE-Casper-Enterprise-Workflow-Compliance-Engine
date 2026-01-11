@@ -64,6 +64,20 @@ async function main() {
       bitmask: 1, // Same as USER
       isSystem: true,
     },
+    {
+      name: 'CUSTOMER',
+      description: 'External customer - can view assigned workflows and upload documents only',
+      permissions: ['workflow:read', 'document:upload'],
+      bitmask: 128, // 1 << 7
+      isSystem: true,
+    },
+    {
+      name: 'MANAGER',
+      description: 'Can assign approvers and manage workflow assignments',
+      permissions: ['template:create', 'workflow:manage', 'workflow:assign', 'user:read'],
+      bitmask: 0, // Legacy - already existed with bitmask 0
+      isSystem: true,
+    },
   ];
 
   for (const role of roles) {
@@ -165,6 +179,149 @@ async function main() {
     console.log(`  ✓ Demo user already exists: ${demoEmail}`);
   }
 
+  // Create single-role test accounts
+  const requesterRole = await prisma.role.findUnique({ where: { name: 'REQUESTER' } });
+
+  // User-only account
+  const userOnlyEmail = 'user@cewce.local';
+  const userOnlyPassword = 'User123!';
+  let userOnlyUser = await prisma.user.findUnique({ where: { email: userOnlyEmail } });
+  if (!userOnlyUser) {
+    userOnlyUser = await prisma.user.create({
+      data: {
+        email: userOnlyEmail,
+        passwordHash: hashPassword(userOnlyPassword),
+        displayName: 'Test User',
+        firstName: 'Test',
+        lastName: 'User',
+        emailVerified: true,
+        isActive: true,
+        roles: {
+          create: [{ roleId: userRole!.id }],
+        },
+        organizationUsers: {
+          create: { orgId: defaultOrg.id, role: 'MEMBER' },
+        },
+      },
+    });
+    console.log(`  ✓ User-only account created: ${userOnlyEmail}`);
+    console.log(`    Password: ${userOnlyPassword}`);
+  } else {
+    console.log(`  ✓ User-only account exists: ${userOnlyEmail}`);
+  }
+
+  // User1 account
+  const user1Email = 'user1@cewce.local';
+  const user1Password = 'User1123!';
+  let user1 = await prisma.user.findUnique({ where: { email: user1Email } });
+  if (!user1) {
+    user1 = await prisma.user.create({
+      data: {
+        email: user1Email,
+        passwordHash: hashPassword(user1Password),
+        displayName: 'User One',
+        firstName: 'User',
+        lastName: 'One',
+        emailVerified: true,
+        isActive: true,
+        roles: {
+          create: [{ roleId: userRole!.id }],
+        },
+        organizationUsers: {
+          create: { orgId: defaultOrg.id, role: 'MEMBER' },
+        },
+      },
+    });
+    console.log(`  ✓ User1 account created: ${user1Email}`);
+    console.log(`    Password: ${user1Password}`);
+  } else {
+    console.log(`  ✓ User1 account exists: ${user1Email}`);
+  }
+
+  // User2 account
+  const user2Email = 'user2@cewce.local';
+  const user2Password = 'User2123!';
+  let user2 = await prisma.user.findUnique({ where: { email: user2Email } });
+  if (!user2) {
+    user2 = await prisma.user.create({
+      data: {
+        email: user2Email,
+        passwordHash: hashPassword(user2Password),
+        displayName: 'User Two',
+        firstName: 'User',
+        lastName: 'Two',
+        emailVerified: true,
+        isActive: true,
+        roles: {
+          create: [{ roleId: userRole!.id }],
+        },
+        organizationUsers: {
+          create: { orgId: defaultOrg.id, role: 'MEMBER' },
+        },
+      },
+    });
+    console.log(`  ✓ User2 account created: ${user2Email}`);
+    console.log(`    Password: ${user2Password}`);
+  } else {
+    console.log(`  ✓ User2 account exists: ${user2Email}`);
+  }
+
+  // Requester-only account
+  const requesterOnlyEmail = 'requester@cewce.local';
+  const requesterOnlyPassword = 'Requester123!';
+  let requesterOnlyUser = await prisma.user.findUnique({ where: { email: requesterOnlyEmail } });
+  if (!requesterOnlyUser) {
+    requesterOnlyUser = await prisma.user.create({
+      data: {
+        email: requesterOnlyEmail,
+        passwordHash: hashPassword(requesterOnlyPassword),
+        displayName: 'Test Requester',
+        firstName: 'Test',
+        lastName: 'Requester',
+        emailVerified: true,
+        isActive: true,
+        roles: {
+          create: [{ roleId: requesterRole!.id }],
+        },
+        organizationUsers: {
+          create: { orgId: defaultOrg.id, role: 'MEMBER' },
+        },
+      },
+    });
+    console.log(`  ✓ Requester-only account created: ${requesterOnlyEmail}`);
+    console.log(`    Password: ${requesterOnlyPassword}`);
+  } else {
+    console.log(`  ✓ Requester-only account exists: ${requesterOnlyEmail}`);
+  }
+
+  // Approver-only account
+  const approverOnlyEmail = 'approver@cewce.local';
+  const approverOnlyPassword = 'Approver123!';
+  let approverOnlyUser = await prisma.user.findUnique({ where: { email: approverOnlyEmail } });
+  if (!approverOnlyUser) {
+    approverOnlyUser = await prisma.user.create({
+      data: {
+        email: approverOnlyEmail,
+        passwordHash: hashPassword(approverOnlyPassword),
+        displayName: 'Test Approver',
+        firstName: 'Test',
+        lastName: 'Approver',
+        emailVerified: true,
+        isActive: true,
+        roles: {
+          create: [{ roleId: approverRole!.id }],
+        },
+        organizationUsers: {
+          create: { orgId: defaultOrg.id, role: 'MEMBER' },
+        },
+      },
+    });
+    console.log(`  ✓ Approver-only account created: ${approverOnlyEmail}`);
+    console.log(`    Password: ${approverOnlyPassword}`);
+  } else {
+    console.log(`  ✓ Approver-only account exists: ${approverOnlyEmail}`);
+  }
+
   // Create a sample workflow template
   const sampleTemplate = await prisma.workflowTemplate.upsert({
     where: { id: 'sample-template' },
@@ -203,8 +360,11 @@ async function main() {
 
   console.log('\n✅ Seeding complete!\n');
   console.log('Default credentials:');
-  console.log('  Admin: admin@cewce.local / Admin123!');
-  console.log('  Demo:  demo@cewce.local / Demo123!');
+  console.log('  Admin:     admin@cewce.local / Admin123!');
+  console.log('  Demo:      demo@cewce.local / Demo123!');
+  console.log('  User:      user@cewce.local / User123!');
+  console.log('  Requester: requester@cewce.local / Requester123!');
+  console.log('  Approver:  approver@cewce.local / Approver123!');
 }
 
 main()
