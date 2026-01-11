@@ -2,7 +2,7 @@
 // Templates Page
 // =============================================================================
 
-import { useState, Fragment, useEffect, useMemo } from 'react';
+import { useState, Fragment, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, Transition } from '@headlessui/react';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
@@ -77,7 +77,7 @@ export function TemplatesPage() {
   });
 
   // Check if any templates are pending blockchain confirmation
-  const hasPendingTemplates = useMemo(() => {
+  const _hasPendingTemplates = useMemo(() => {
     return templates.some(t => t.registrationDeployHash && !t.onChainWorkflowId);
   }, [templates]);
 

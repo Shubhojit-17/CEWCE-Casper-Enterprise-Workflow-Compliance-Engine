@@ -48,7 +48,6 @@ export function DashboardLayout() {
 
   // Build navigation based on user roles
   const userRoles = user?.roles || [];
-  const isAdmin = userRoles.includes('ADMIN');
   
   // Filter navigation items by role
   const allNavItems = [...baseNavigation, ...adminNavigation];

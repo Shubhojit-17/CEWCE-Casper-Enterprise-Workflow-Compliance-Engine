@@ -45,7 +45,7 @@ export function DashboardPage() {
   });
 
   // Fetch workflows pending customer confirmation (assigned to current user)
-  const { data: pendingConfirmation = [], isLoading: confirmationLoading } = useQuery({
+  const { data: pendingConfirmation = [] } = useQuery({
     queryKey: ['pending-customer-confirmation'],
     queryFn: async () => {
       const response = await api.get<{ success: boolean; data: { instances: WorkflowInstance[] } }>('/workflow-instances', {
