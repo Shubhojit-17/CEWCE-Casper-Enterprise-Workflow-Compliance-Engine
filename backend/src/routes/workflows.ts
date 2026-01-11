@@ -7,7 +7,7 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { TemplateStatus, InstanceStatus, type Prisma } from '@prisma/client';
+import { TemplateStatus, type Prisma } from '@prisma/client';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { createError } from '../middleware/error-handler.js';
 import { sha256Hex, sha256Bytes } from '../lib/crypto.js';
@@ -69,22 +69,71 @@ const updateWorkflowSchema = createWorkflowSchema.partial();
 
 /**
  * Get workflow statistics for dashboard.
+ * Stats are filtered based on user role:
+ * - ADMIN/MANAGER: See all workflows in their org
+ * - APPROVER: See workflows pending their approval + ones they've processed
+ * - REQUESTER: See workflows they created
+ * - USER (Customer): See workflows assigned to them as customer
  */
-workflowsRouter.get('/stats', requireAuth, async (_req: Request, res: Response, next: NextFunction) => {
+workflowsRouter.get('/stats', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const [total, active, completed, escalated] = await Promise.all([
-      prisma.workflowInstance.count(),
+    const userId = req.user!.userId;
+    const userRoles = req.user!.roles as string[];
+    
+    // Build filter based on user role
+    let whereFilter: Prisma.WorkflowInstanceWhereInput = {};
+    
+    const isAdmin = userRoles.some(r => ['ADMIN', 'MANAGER'].includes(r));
+    const isApprover = userRoles.some(r => ['APPROVER', 'SENIOR_APPROVER'].includes(r));
+    const isRequester = userRoles.includes('REQUESTER');
+    
+    if (isAdmin) {
+      // Admins see all workflows (no filter)
+      whereFilter = {};
+    } else if (isApprover && isRequester) {
+      // Users with both roles see workflows they created OR can approve
+      whereFilter = {
+        OR: [
+          { creatorId: userId },
+          { assignedApproverId: userId },
+          { assignedCustomerId: userId },
+        ],
+      };
+    } else if (isApprover) {
+      // Approvers see workflows assigned to them or pending approval
+      whereFilter = {
+        OR: [
+          { assignedApproverId: userId },
+          { status: 'CUSTOMER_CONFIRMED' }, // All pending approval
+        ],
+      };
+    } else if (isRequester) {
+      // Requesters see workflows they created
+      whereFilter = { creatorId: userId };
+    } else {
+      // Regular users (customers) see workflows assigned to them
+      whereFilter = { assignedCustomerId: userId };
+    }
+
+    const [total, pendingReview, approved, rejected] = await Promise.all([
+      prisma.workflowInstance.count({ where: whereFilter }),
       prisma.workflowInstance.count({
         where: { 
-          // Count both ACTIVE and legacy PENDING as "active" workflows
-          status: { in: [InstanceStatus.ACTIVE, InstanceStatus.PENDING] },
+          ...whereFilter,
+          status: { in: ['CUSTOMER_CONFIRMED', 'PENDING_CUSTOMER_CONFIRMATION', 'ONCHAIN_PENDING'] },
         },
       }),
       prisma.workflowInstance.count({
-        where: { status: InstanceStatus.COMPLETED },
+        where: { 
+          ...whereFilter,
+          status: 'ACTIVE',
+        },
       }),
       prisma.workflowInstance.count({
-        where: { status: InstanceStatus.ESCALATED },
+        where: { 
+          ...whereFilter,
+          status: 'REJECTED',
+        },
       }),
     ]);
 
@@ -92,10 +141,12 @@ workflowsRouter.get('/stats', requireAuth, async (_req: Request, res: Response, 
       success: true,
       data: {
         totalWorkflows: total,
-        activeWorkflows: active,
-        pendingWorkflows: active, // Keep for backward compatibility
-        completedWorkflows: completed,
-        escalatedWorkflows: escalated,
+        pendingWorkflows: pendingReview,
+        completedWorkflows: approved, // Approved/Active on-chain
+        escalatedWorkflows: rejected, // Using this for rejected count
+        // Additional stats for clarity
+        approvedWorkflows: approved,
+        rejectedWorkflows: rejected,
       },
     });
   } catch (error) {

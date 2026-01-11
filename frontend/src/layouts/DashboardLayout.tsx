@@ -5,6 +5,7 @@
 import { Fragment, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Dialog, Menu, Transition } from '@headlessui/react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Bars3Icon,
   XMarkIcon,
@@ -56,7 +57,11 @@ export function DashboardLayout() {
     return item.roles.some(role => userRoles.includes(role));
   });
 
+  const queryClient = useQueryClient();
+
   const handleLogout = () => {
+    // Clear all cached queries to prevent stale data from previous user
+    queryClient.clear();
     logout();
     navigate('/auth/login');
   };

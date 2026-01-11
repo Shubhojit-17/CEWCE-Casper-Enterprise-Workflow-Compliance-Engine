@@ -22,6 +22,8 @@ interface DashboardStats {
   pendingWorkflows: number;
   completedWorkflows: number;
   escalatedWorkflows: number;
+  approvedWorkflows?: number;
+  rejectedWorkflows?: number;
 }
 
 export function DashboardPage() {
@@ -128,14 +130,14 @@ export function DashboardPage() {
       color: 'bg-yellow-500',
     },
     {
-      name: 'Completed',
-      value: stats?.completedWorkflows || 0,
+      name: 'Approved',
+      value: stats?.approvedWorkflows || stats?.completedWorkflows || 0,
       icon: CheckCircleIcon,
       color: 'bg-green-500',
     },
     {
-      name: 'Escalated',
-      value: stats?.escalatedWorkflows || 0,
+      name: 'Rejected',
+      value: stats?.rejectedWorkflows || stats?.escalatedWorkflows || 0,
       icon: ExclamationTriangleIcon,
       color: 'bg-red-500',
     },
