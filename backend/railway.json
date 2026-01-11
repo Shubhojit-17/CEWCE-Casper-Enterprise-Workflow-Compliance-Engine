@@ -5,7 +5,7 @@
     "buildCommand": "npm ci && npx prisma generate && npm run build"
   },
   "deploy": {
-    "startCommand": "npx prisma migrate resolve --rolled-back 20260111_enterprise_extensions || true && npx prisma migrate deploy && npm start",
+    "startCommand": "npx prisma migrate deploy && npm start",
     "healthcheckPath": "/api/v1/health",
     "healthcheckTimeout": 60,
     "restartPolicyType": "ON_FAILURE",
