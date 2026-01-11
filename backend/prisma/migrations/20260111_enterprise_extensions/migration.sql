@@ -11,24 +11,35 @@
 
 -- Add new instance statuses (PostgreSQL enum extension)
 -- Note: PostgreSQL requires ALTER TYPE for adding enum values
-ALTER TYPE "InstanceStatus" ADD VALUE IF NOT EXISTS 'SUBMITTED';
-ALTER TYPE "InstanceStatus" ADD VALUE IF NOT EXISTS 'REJECTED';
-ALTER TYPE "InstanceStatus" ADD VALUE IF NOT EXISTS 'PENDING_CUSTOMER_CONFIRMATION';
+-- Using lowercase enum name as created in 0001_initial migration
+ALTER TYPE "instance_status" ADD VALUE IF NOT EXISTS 'SUBMITTED';
+ALTER TYPE "instance_status" ADD VALUE IF NOT EXISTS 'REJECTED';
+ALTER TYPE "instance_status" ADD VALUE IF NOT EXISTS 'PENDING_CUSTOMER_CONFIRMATION';
 
 -- Add assignment columns to workflow_instances (nullable, non-breaking)
 ALTER TABLE "workflow_instances" ADD COLUMN IF NOT EXISTS "assignedCustomerId" TEXT;
 ALTER TABLE "workflow_instances" ADD COLUMN IF NOT EXISTS "assignedApproverId" TEXT;
 
--- Add foreign key constraints
-ALTER TABLE "workflow_instances" 
-  ADD CONSTRAINT "workflow_instances_assignedCustomerId_fkey" 
-  FOREIGN KEY ("assignedCustomerId") REFERENCES "users"("id") 
-  ON DELETE SET NULL ON UPDATE CASCADE;
+-- Add foreign key constraints (use IF NOT EXISTS pattern for idempotency)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'workflow_instances_assignedCustomerId_fkey') THEN
+    ALTER TABLE "workflow_instances" 
+      ADD CONSTRAINT "workflow_instances_assignedCustomerId_fkey" 
+      FOREIGN KEY ("assignedCustomerId") REFERENCES "users"("id") 
+      ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
 
-ALTER TABLE "workflow_instances" 
-  ADD CONSTRAINT "workflow_instances_assignedApproverId_fkey" 
-  FOREIGN KEY ("assignedApproverId") REFERENCES "users"("id") 
-  ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'workflow_instances_assignedApproverId_fkey') THEN
+    ALTER TABLE "workflow_instances" 
+      ADD CONSTRAINT "workflow_instances_assignedApproverId_fkey" 
+      FOREIGN KEY ("assignedApproverId") REFERENCES "users"("id") 
+      ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- Add indexes for efficient lookups
 CREATE INDEX IF NOT EXISTS "workflow_instances_assignedCustomerId_idx" ON "workflow_instances"("assignedCustomerId");
