@@ -56,11 +56,31 @@ function loadDeployerKey(): void {
       publicKeyHex = readFileSync(DEPLOYER_PUBLIC_KEY_HEX_PATH, 'utf-8').trim();
     }
 
-    // Load Secp256K1 key pair from files
-    deployerKeyPair = Keys.Secp256K1.parseKeyFiles(
-      DEPLOYER_PUBLIC_KEY_PATH,
-      DEPLOYER_SECRET_KEY_PATH
-    );
+    // Read the secret key to detect key type
+    const secretKeyContent = readFileSync(DEPLOYER_SECRET_KEY_PATH, 'utf-8');
+    
+    // Detect key type from PEM content
+    // Ed25519 keys use "BEGIN PRIVATE KEY" with specific OID
+    // Secp256k1 keys use "BEGIN EC PRIVATE KEY" or specific format
+    const isEd25519 = secretKeyContent.includes('MC4CAQAwBQYDK2Vw') || 
+                      (secretKeyContent.includes('BEGIN PRIVATE KEY') && 
+                       !secretKeyContent.includes('BEGIN EC PRIVATE KEY'));
+    
+    if (isEd25519) {
+      // Load Ed25519 key pair from files
+      deployerKeyPair = Keys.Ed25519.parseKeyFiles(
+        DEPLOYER_PUBLIC_KEY_PATH,
+        DEPLOYER_SECRET_KEY_PATH
+      );
+      logger.info('Using Ed25519 deployer key');
+    } else {
+      // Load Secp256K1 key pair from files
+      deployerKeyPair = Keys.Secp256K1.parseKeyFiles(
+        DEPLOYER_PUBLIC_KEY_PATH,
+        DEPLOYER_SECRET_KEY_PATH
+      );
+      logger.info('Using Secp256K1 deployer key');
+    }
     
     // Get public key hex from loaded key if not read from file
     if (!publicKeyHex) {
