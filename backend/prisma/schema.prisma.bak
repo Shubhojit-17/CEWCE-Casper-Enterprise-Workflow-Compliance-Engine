@@ -1,0 +1,510 @@
+// =============================================================================
+// CEWCE - Casper Enterprise Workflow & Compliance Engine
+// Prisma Database Schema
+// =============================================================================
+// This schema defines the complete data model for the enterprise workflow engine.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// Authentication & User Management
+// =============================================================================
+
+model User {
+  id            String   @id @default(cuid())
+  email         String?  @unique  // Optional for wallet-first auth
+  passwordHash  String?  // Optional for wallet-first auth
+  publicKey     String?  @unique // Casper public key (optional, can be linked later)
+  accountHash   String?  @unique // Casper account hash (derived from public key)
+  displayName   String?  // User display name
+  
+  // Profile
+  firstName     String?
+  lastName      String?
+  avatar        String?
+  
+  // Status
+  isActive      Boolean  @default(true)
+  emailVerified Boolean  @default(false)
+  
+  // Timestamps
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastLoginAt   DateTime?
+  
+  // Relations
+  roles           UserRole[]
+  organizationUsers OrganizationUser[]
+  createdWorkflows WorkflowInstance[] @relation("InstanceCreator")
+  assignedAsCustomer WorkflowInstance[] @relation("CustomerAssignment")
+  assignedAsApprover WorkflowInstance[] @relation("ApproverAssignment")
+  transitions      WorkflowTransition[]
+  auditLogs       AuditLog[]
+  apiKeys         ApiKey[]
+  
+  @@index([email])
+  @@index([publicKey])
+  @@index([accountHash])
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  permissions Json     // Array of permission strings
+  bitmask     Int      @unique // Maps to contract role bitmask
+  
+  // System roles cannot be deleted
+  isSystem    Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  userRoles   UserRole[]
+  
+  @@map("roles")
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  
+  // Scope: organization-wide or specific template
+  orgId     String?
+  templateId String?
+  
+  grantedAt DateTime @default(now())
+  grantedBy String?  // User ID who granted this role
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [orgId], references: [id])
+  template  WorkflowTemplate? @relation(fields: [templateId], references: [id])
+  
+  @@unique([userId, roleId, orgId, templateId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model AuthNonce {
+  id        String   @id @default(cuid())
+  publicKey String   @unique  // Store by public key for wallet auth flow
+  nonce     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  
+  createdAt DateTime @default(now())
+  
+  @@index([nonce])
+  @@index([expiresAt])
+  @@index([publicKey])
+  @@map("auth_nonces")
+}
+
+model ApiKey {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  keyHash     String   @unique // SHA-256 hash of the API key
+  keyPrefix   String   // First 8 chars for identification
+  
+  permissions Json     // Scoped permissions for this key
+  
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([keyHash])
+  @@index([userId])
+  @@map("api_keys")
+}
+
+// =============================================================================
+// Organization / Multi-tenancy
+// =============================================================================
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  
+  // Settings
+  settings    Json     @default("{}")
+  
+  // Billing/Limits
+  plan        String   @default("free")
+  limits      Json     @default("{}")
+  
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  users       OrganizationUser[]
+  templates   WorkflowTemplate[]
+  instances   WorkflowInstance[]
+  userRoles   UserRole[]
+  
+  @@index([slug])
+  @@map("organizations")
+}
+
+model OrganizationUser {
+  id        String   @id @default(cuid())
+  orgId     String
+  userId    String
+  role      String   @default("member") // owner, admin, member
+  
+  joinedAt  DateTime @default(now())
+  
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([orgId, userId])
+  @@index([orgId])
+  @@index([userId])
+  @@map("organization_users")
+}
+
+// =============================================================================
+// Workflow Templates
+// =============================================================================
+
+model WorkflowTemplate {
+  id          String   @id @default(cuid())
+  orgId       String
+  
+  name        String
+  description String?
+  version     Int      @default(1)
+  
+  // State Machine Definition
+  states      Json     // Array of state definitions
+  transitions Json     // Array of allowed transitions
+  
+  // Governance Configuration
+  slaDays     Int      @default(7)
+  escalationDays Int   @default(14)
+  autoEscalate Boolean @default(false)
+  
+  // Metadata
+  metadata    Json     @default("{}")
+  
+  // Blockchain Reference
+  contractHash String? // SHA-256 hash of template definition for integrity
+  onChainWorkflowId BigInt? @unique // U256 workflow ID from create_workflow on-chain registration
+  registrationDeployHash String? // Deploy hash for on-chain registration
+  
+  // Status
+  status      TemplateStatus @default(DRAFT)
+  publishedAt DateTime?
+  archivedAt  DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  organization Organization       @relation(fields: [orgId], references: [id])
+  instances    WorkflowInstance[]
+  userRoles    UserRole[]
+  
+  @@unique([orgId, name, version])
+  @@index([orgId])
+  @@index([status])
+  @@map("workflow_templates")
+}
+
+enum TemplateStatus {
+  DRAFT
+  PUBLISHED
+  DEPRECATED
+  ARCHIVED
+}
+
+// =============================================================================
+// Workflow Instances
+// =============================================================================
+
+model WorkflowInstance {
+  id          String   @id @default(cuid())
+  orgId       String
+  templateId  String
+  creatorId   String
+  
+  // Instance Data
+  title       String
+  description String?
+  data        Json     @default("{}") // Custom workflow data
+  
+  // State (mirrors blockchain)
+  currentState Int     @default(0) // Maps to contract state constant
+  status       InstanceStatus @default(DRAFT)
+  
+  // Blockchain Reference
+  workflowId   BigInt? @unique // On-chain workflow ID
+  deployHash   String? // Initial deploy hash
+  
+  // Assignment (NEW - additive fields)
+  assignedCustomerId  String? // Customer assigned to this workflow (can view/upload docs)
+  assignedApproverId  String? // Specific approver assigned by manager
+  
+  // SLA Tracking
+  dueDate      DateTime?
+  escalationDate DateTime?
+  
+  // Timestamps
+  submittedAt  DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relations
+  organization Organization         @relation(fields: [orgId], references: [id])
+  template     WorkflowTemplate     @relation(fields: [templateId], references: [id])
+  creator      User                 @relation("InstanceCreator", fields: [creatorId], references: [id])
+  assignedCustomer User?            @relation("CustomerAssignment", fields: [assignedCustomerId], references: [id])
+  assignedApprover User?            @relation("ApproverAssignment", fields: [assignedApproverId], references: [id])
+  transitions  WorkflowTransition[]
+  documents    WorkflowDocument[]
+  comments     WorkflowComment[]
+  
+  @@index([orgId])
+  @@index([templateId])
+  @@index([creatorId])
+  @@index([status])
+  @@index([currentState])
+  @@index([workflowId])
+  @@index([assignedCustomerId])
+  @@index([assignedApproverId])
+  @@map("workflow_instances")
+}
+
+enum InstanceStatus {
+  DRAFT                           // Initial state, workflow created but not yet confirmed
+  PENDING_CUSTOMER_CONFIRMATION   // Awaiting customer to confirm/reject the workflow
+  CUSTOMER_CONFIRMED              // Customer confirmed, awaiting requester to submit to blockchain
+  ONCHAIN_PENDING                 // Submitted to blockchain, awaiting confirmation
+  ACTIVE                          // On-chain and ready for workflow execution (approvals, transitions)
+  SUBMITTED                       // Legacy: Workflow formally submitted, pending first approval
+  PENDING                         // Legacy: Kept for backward compatibility
+  REJECTED                        // Workflow rejected, can be edited and resubmitted
+  COMPLETED                       // Workflow completed successfully
+  CANCELLED                       // Workflow cancelled
+  ESCALATED                       // Workflow escalated for review
+}
+
+// =============================================================================
+// Workflow Transitions
+// =============================================================================
+
+model WorkflowTransition {
+  id          String   @id @default(cuid())
+  instanceId  String
+  actorId     String
+  
+  // Transition Details
+  fromState   Int
+  toState     Int
+  action      String   // e.g., "submit", "approve", "reject"
+  
+  // Blockchain Reference
+  deployHash  String?  @unique
+  blockHeight BigInt?
+  blockHash   String?  // Block hash when deploy was included
+  stateRootHash String? // State root hash after execution
+  executionCost BigInt? // Execution cost in motes
+  
+  // Confirmation Status
+  status      TransitionStatus @default(PENDING)
+  error       String?
+  
+  // Metadata
+  comment     String?
+  metadata    Json     @default("{}")
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  confirmedAt DateTime?
+  
+  // Relations
+  instance    WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  actor       User             @relation(fields: [actorId], references: [id])
+  
+  @@index([instanceId])
+  @@index([actorId])
+  @@index([deployHash])
+  @@index([status])
+  @@map("workflow_transitions")
+}
+
+enum TransitionStatus {
+  PENDING           // Legacy/initial state
+  ONCHAIN_PENDING   // Deploy submitted, waiting for confirmation
+  CONFIRMED         // Legacy confirmed (will migrate to CONFIRMED_ONCHAIN)
+  CONFIRMED_ONCHAIN // Deploy confirmed on-chain
+  FAILED            // Legacy failed
+  FAILED_ONCHAIN    // Deploy failed on-chain
+  TIMEOUT           // Confirmation timed out
+}
+
+// =============================================================================
+// Supporting Documents
+// =============================================================================
+
+model WorkflowDocument {
+  id          String   @id @default(cuid())
+  instanceId  String
+  uploaderId  String
+  
+  // Document Info
+  name        String
+  mimeType    String
+  size        Int      // bytes
+  
+  // Storage
+  storageKey  String   // S3/storage key
+  
+  // Integrity
+  checksum    String   // SHA-256 hash
+  casperHash  String?  // Document hash stored on chain
+  
+  createdAt   DateTime @default(now())
+  
+  instance    WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  
+  @@index([instanceId])
+  @@map("workflow_documents")
+}
+
+// =============================================================================
+// Comments & Discussion
+// =============================================================================
+
+model WorkflowComment {
+  id          String   @id @default(cuid())
+  instanceId  String
+  authorId    String
+  
+  content     String
+  
+  // Thread support
+  parentId    String?
+  
+  isEdited    Boolean  @default(false)
+  editedAt    DateTime?
+  
+  createdAt   DateTime @default(now())
+  
+  instance    WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  parent      WorkflowComment? @relation("CommentThread", fields: [parentId], references: [id])
+  replies     WorkflowComment[] @relation("CommentThread")
+  
+  @@index([instanceId])
+  @@index([parentId])
+  @@map("workflow_comments")
+}
+
+// =============================================================================
+// Audit Logging
+// =============================================================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  
+  // Event Info
+  action      String   // e.g., "user.login", "workflow.transition"
+  resource    String   // e.g., "user", "workflow_instance"
+  resourceId  String?
+  
+  // Details
+  details     Json     @default("{}")
+  
+  // Request Context
+  ipAddress   String?
+  userAgent   String?
+  requestId   String?
+  
+  // Blockchain Reference (for state changes)
+  deployHash  String?
+  
+  createdAt   DateTime @default(now())
+  
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@index([userId])
+  @@index([action])
+  @@index([resource, resourceId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// =============================================================================
+// System Configuration
+// =============================================================================
+
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  
+  updatedAt   DateTime @updatedAt
+  
+  @@map("system_config")
+}
+
+// =============================================================================
+// Deploy Queue (for tracking submitted deploys)
+// =============================================================================
+
+model DeployQueue {
+  id          String   @id @default(cuid())
+  deployHash  String   @unique
+  
+  type        String   // "create_workflow", "transition_state"
+  payload     Json     // Original deploy parameters
+  
+  status      DeployQueueStatus @default(SUBMITTED)
+  
+  // Linked records
+  instanceId  String?
+  transitionId String?
+  
+  // Results
+  result      Json?
+  error       String?
+  
+  submittedAt DateTime @default(now())
+  processedAt DateTime?
+  
+  @@index([deployHash])
+  @@index([status])
+  @@index([instanceId])
+  @@map("deploy_queue")
+}
+
+enum DeployQueueStatus {
+  SUBMITTED
+  PROCESSING
+  CONFIRMED
+  FAILED
+}

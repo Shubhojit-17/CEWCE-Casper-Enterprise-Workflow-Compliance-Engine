@@ -56,6 +56,7 @@ const createWorkflowSchema = z.object({
   version: z.string().default('1.0.0'),
   states: z.array(workflowStateSchema).min(2), // At least initial and terminal
   transitions: z.array(workflowTransitionSchema).min(1),
+  roles: z.record(z.unknown()).optional().default({}), // Role configuration
   slaDays: z.number().int().min(1).max(365).optional().default(7),
   escalationDays: z.number().int().min(1).max(365).optional().default(14),
   metadata: z.record(z.unknown()).optional(),
@@ -347,10 +348,12 @@ workflowsRouter.post(
           version: parseInt(data.version, 10) || 1,
           states: JSON.parse(JSON.stringify(data.states)), // Ensure JSON-serializable
           transitions: JSON.parse(JSON.stringify(data.transitions)), // Ensure JSON-serializable
+          roles: JSON.parse(JSON.stringify(data.roles || {})), // Required field
           slaDays: data.slaDays,
           escalationDays: data.escalationDays,
           metadata: JSON.parse(JSON.stringify(data.metadata || {})), // Ensure JSON-serializable
           contractHash,
+          creatorId: req.user!.userId, // Required field
         },
       });
 
@@ -419,8 +422,10 @@ workflowsRouter.put(
             version: newVersion,
             states: JSON.parse(JSON.stringify(data.states || existing.states)),
             transitions: JSON.parse(JSON.stringify(data.transitions || existing.transitions)),
+            roles: JSON.parse(JSON.stringify(data.roles || existing.roles)), // Required field
             metadata: JSON.parse(JSON.stringify(data.metadata || existing.metadata)),
             contractHash,
+            creatorId: req.user!.userId, // Required field
           },
         });
 

@@ -194,7 +194,7 @@ async function canViewWorkflow(
   userRoles: string[],
   instance: { 
     id: string; 
-    orgId: string; 
+    orgId: string | null; 
     creatorId: string; 
     assignedCustomerId: string | null; 
     assignedApproverId: string | null 
@@ -203,6 +203,7 @@ async function canViewWorkflow(
   // ADMIN, AUDITOR, MANAGER, APPROVER: Can view all in their orgs
   if (userRoles.some(r => ['ADMIN', 'AUDITOR', 'MANAGER', 'APPROVER', 'SENIOR_APPROVER'].includes(r))) {
     // Check org membership
+    if (!instance.orgId) return true; // No org means visible to anyone with roles
     const orgMembership = await prisma.organizationUser.findFirst({
       where: { userId, orgId: instance.orgId },
     });
