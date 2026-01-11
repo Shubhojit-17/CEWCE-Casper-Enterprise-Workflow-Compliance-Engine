@@ -228,14 +228,15 @@ export async function getStateRootHash(): Promise<string> {
 }
 
 /**
- * Get account information for a public key.
+ * Get account information for a public key using authorized RPC.
  */
 export async function getAccountInfo(publicKeyHex: string): Promise<unknown> {
   const publicKey = CLPublicKey.fromHex(publicKeyHex);
   const stateRootHash = await getStateRootHash();
   const accountHash = publicKey.toAccountHashStr();
   
-  return casperService.getBlockState(stateRootHash, accountHash, []);
+  // Use authorized RPC call
+  return jsonRpcCall('state_get_item', [stateRootHash, accountHash, []]);
 }
 
 /**
@@ -246,10 +247,9 @@ export async function getAccountBalance(publicKeyHex: string): Promise<string> {
   try {
     logger.info(`Fetching balance for public key: ${publicKeyHex}`);
     
-    // Use query_balance RPC method (Casper 2.x compatible)
-    const response = await fetch(config.casperNodeUrl, {
+    // Use query_balance RPC method (Casper 2.x compatible) with authorization
+    const response = await rpcFetch(config.casperNodeUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'query_balance',
@@ -480,10 +480,11 @@ export async function submitDeploy(signedDeployJson: unknown): Promise<string> {
 }
 
 /**
- * Get deploy status and results.
+ * Get deploy status and results using authorized RPC.
  */
 export async function getDeployInfo(deployHash: string): Promise<unknown> {
-  return casperService.getDeployInfo(deployHash);
+  // Use our custom RPC call with CSPR.cloud authorization
+  return jsonRpcCall('info_get_deploy', [deployHash]);
 }
 
 /**
@@ -536,13 +537,13 @@ export async function queryWorkflowState(workflowId: string): Promise<unknown> {
     try {
       const stateRootHash = await getStateRootHash();
       
-      // Query the contract's dictionary for workflow data
-      const result = await casperService.getDictionaryItemByName(
-        stateRootHash,
-        config.workflowContractHash,
-        'workflows',
-        workflowId
-      );
+      // Query the contract's dictionary for workflow data using authorized RPC
+      const result = await jsonRpcCall('state_get_dictionary_item', [{
+        StateRootHash: stateRootHash,
+        ContractHash: config.workflowContractHash,
+        DictionaryName: 'workflows',
+        DictionaryItemKey: workflowId
+      }]);
       return result;
     } catch (error) {
       lastError = error as Error;
@@ -574,12 +575,13 @@ export async function queryWorkflowHistory(workflowId: string): Promise<unknown>
   const stateRootHash = await getStateRootHash();
   
   try {
-    const result = await casperService.getDictionaryItemByName(
-      stateRootHash,
-      config.workflowContractHash,
-      'transitions',
-      workflowId
-    );
+    // Use authorized RPC for dictionary query
+    const result = await jsonRpcCall('state_get_dictionary_item', [{
+      StateRootHash: stateRootHash,
+      ContractHash: config.workflowContractHash,
+      DictionaryName: 'transitions',
+      DictionaryItemKey: workflowId
+    }]);
     return result;
   } catch (error) {
     logger.warn({ workflowId, error }, 'Failed to query workflow history');
@@ -597,12 +599,12 @@ export async function queryWorkflowCount(): Promise<string> {
 
   const stateRootHash = await getStateRootHash();
   
-  // Use casperService for queries instead of contractClient
-  const result = await casperService.getBlockState(
+  // Use authorized RPC for state query
+  const result = await jsonRpcCall('state_get_item', [
     stateRootHash,
     config.workflowContractHash || '',
     ['workflow_count']
-  );
+  ]) as { CLValue?: { data?: unknown } };
   
   return result?.CLValue?.data?.toString() || '0';
 }
