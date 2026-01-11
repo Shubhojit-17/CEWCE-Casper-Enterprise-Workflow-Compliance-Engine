@@ -54,8 +54,8 @@ const configSchema = z.object({
 function loadConfig() {
   const result = configSchema.safeParse({
     nodeEnv: process.env.NODE_ENV,
-    port: process.env.PORT,
-    host: process.env.HOST,
+    port: process.env.PORT || process.env.APP_PORT, // Railway uses PORT, local might use APP_PORT
+    host: process.env.HOST || process.env.APP_HOST || '0.0.0.0', // Default to 0.0.0.0 for containers
     databaseUrl: process.env.DATABASE_URL,
     redisUrl: process.env.REDIS_URL,
     redisHost: process.env.REDIS_HOST || process.env.REDISHOST, // Railway uses REDISHOST
