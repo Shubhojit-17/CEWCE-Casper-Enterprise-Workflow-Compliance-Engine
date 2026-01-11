@@ -1,7 +1,7 @@
 // =============================================================================
 // Casper Deployer Keys Loader
 // =============================================================================
-// Loads Casper deployer keys from Base64-encoded environment variables
+// Loads Casper deployer keys from environment variables (plain PEM format)
 // and writes them to /tmp/casper/ for the Casper SDK to use.
 // 
 // This runs ONCE at application startup, BEFORE any Casper SDK code.
@@ -18,19 +18,18 @@ const PUBLIC_KEY_HEX_PATH = `${CASPER_KEY_DIR}/public_key_hex`;
 /**
  * Initialize Casper deployer keys from environment variables.
  * 
- * Reads Base64-encoded PEM keys from:
- * - CASPER_DEPLOYER_SECRET_KEY_BASE64 (or CASPER_SECRET_KEY_PEM for backwards compat)
- * - CASPER_DEPLOYER_PUBLIC_KEY_BASE64 (or CASPER_PUBLIC_KEY_PEM for backwards compat)
+ * Reads plain PEM keys from:
+ * - CASPER_SECRET_KEY_PEM (raw PEM content)
+ * - CASPER_PUBLIC_KEY_PEM (raw PEM content)
  * - CASPER_PUBLIC_KEY_HEX (optional, for public key hex)
  * 
- * Writes decoded keys to /tmp/casper/ directory.
+ * Writes keys to /tmp/casper/ directory.
  * 
  * @returns true if keys were loaded successfully, false otherwise
  */
 export function initializeDeployerKeys(): boolean {
-  // Check for new env var names first, then fall back to old names
-  const secretKeyBase64 = process.env.CASPER_DEPLOYER_SECRET_KEY_BASE64 || process.env.CASPER_SECRET_KEY_PEM;
-  const publicKeyBase64 = process.env.CASPER_DEPLOYER_PUBLIC_KEY_BASE64 || process.env.CASPER_PUBLIC_KEY_PEM;
+  const secretKeyPem = process.env.CASPER_SECRET_KEY_PEM;
+  const publicKeyPem = process.env.CASPER_PUBLIC_KEY_PEM;
   const publicKeyHex = process.env.CASPER_PUBLIC_KEY_HEX;
 
   // Check if keys are already present (e.g., from Docker volume mount)
@@ -40,9 +39,9 @@ export function initializeDeployerKeys(): boolean {
   }
 
   // Check if we have the required environment variables
-  if (!secretKeyBase64 || !publicKeyBase64) {
-    console.warn('[deployer-keys] Casper deployer key environment variables not set.');
-    console.warn('[deployer-keys] Set CASPER_DEPLOYER_SECRET_KEY_BASE64 and CASPER_DEPLOYER_PUBLIC_KEY_BASE64');
+  if (!secretKeyPem || !publicKeyPem) {
+    console.warn('[deployer-keys] Casper deployer keys missing in environment');
+    console.warn('[deployer-keys] Set CASPER_SECRET_KEY_PEM and CASPER_PUBLIC_KEY_PEM');
     console.warn('[deployer-keys] Server-side template registration will be unavailable.');
     return false;
   }
@@ -51,29 +50,23 @@ export function initializeDeployerKeys(): boolean {
     // Create directory if it doesn't exist
     if (!existsSync(CASPER_KEY_DIR)) {
       mkdirSync(CASPER_KEY_DIR, { recursive: true });
-      console.log(`[deployer-keys] Created directory: ${CASPER_KEY_DIR}`);
     }
 
-    // Decode and write secret key
-    const secretKeyPem = Buffer.from(secretKeyBase64, 'base64').toString('utf-8');
+    // Write secret key (plain PEM, no decoding needed)
     writeFileSync(SECRET_KEY_PATH, secretKeyPem, { encoding: 'utf-8' });
     chmodSync(SECRET_KEY_PATH, 0o600); // Read/write for owner only
-    console.log(`[deployer-keys] Written secret key to ${SECRET_KEY_PATH}`);
 
-    // Decode and write public key
-    const publicKeyPem = Buffer.from(publicKeyBase64, 'base64').toString('utf-8');
+    // Write public key (plain PEM, no decoding needed)
     writeFileSync(PUBLIC_KEY_PATH, publicKeyPem, { encoding: 'utf-8' });
     chmodSync(PUBLIC_KEY_PATH, 0o644); // Read for all, write for owner
-    console.log(`[deployer-keys] Written public key to ${PUBLIC_KEY_PATH}`);
 
     // Write public key hex if available
     if (publicKeyHex) {
       writeFileSync(PUBLIC_KEY_HEX_PATH, publicKeyHex.trim(), { encoding: 'utf-8' });
       chmodSync(PUBLIC_KEY_HEX_PATH, 0o644);
-      console.log(`[deployer-keys] Written public key hex to ${PUBLIC_KEY_HEX_PATH}`);
     }
 
-    console.log('[deployer-keys] ✓ Casper deployer keys loaded successfully');
+    console.log('[deployer-keys] Casper deployer keys written to /tmp/casper');
     return true;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
