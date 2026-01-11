@@ -62,12 +62,13 @@ RUN chown -R cewce:nodejs /app
 # Switch to non-root user
 USER cewce
 
-# Expose port
+# Railway injects PORT dynamically - don't hardcode
+# EXPOSE is just documentation, Railway uses PORT env var
 EXPOSE 4000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:4000/api/health || exit 1
+# Health check - use correct path /api/v1/health
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-4000}/api/v1/health || exit 1
 
 # Start application with migrations
 ENTRYPOINT ["./docker-entrypoint.sh"]
