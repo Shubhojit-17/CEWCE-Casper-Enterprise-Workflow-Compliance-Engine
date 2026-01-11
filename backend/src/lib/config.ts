@@ -81,8 +81,23 @@ function loadConfig() {
   });
 
   if (!result.success) {
-    console.error('Configuration validation failed:');
-    console.error(result.error.format());
+    console.error('='.repeat(60));
+    console.error('CONFIGURATION VALIDATION FAILED');
+    console.error('='.repeat(60));
+    console.error('Environment variables received:');
+    console.error('  PORT:', process.env.PORT);
+    console.error('  APP_PORT:', process.env.APP_PORT);
+    console.error('  HOST:', process.env.HOST);
+    console.error('  APP_HOST:', process.env.APP_HOST);
+    console.error('  DATABASE_URL:', process.env.DATABASE_URL ? '[SET]' : '[NOT SET]');
+    console.error('  REDIS_URL:', process.env.REDIS_URL ? '[SET]' : '[NOT SET]');
+    console.error('  REDIS_HOST:', process.env.REDIS_HOST);
+    console.error('  REDISHOST:', process.env.REDISHOST);
+    console.error('  JWT_SECRET:', process.env.JWT_SECRET ? '[SET]' : '[NOT SET]');
+    console.error('='.repeat(60));
+    console.error('Validation errors:');
+    console.error(JSON.stringify(result.error.format(), null, 2));
+    console.error('='.repeat(60));
     process.exit(1);
   }
 
