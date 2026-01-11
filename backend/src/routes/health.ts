@@ -5,7 +5,7 @@
 import { Router, type Request, type Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { redis } from '../lib/redis.js';
-import { getStateRootHash } from '../lib/casper.js';
+import { getStateRootHash, isServerSigningAvailable, getDeployerPublicKey } from '../lib/casper.js';
 import { logger } from '../lib/logger.js';
 
 export const healthRouter = Router();
@@ -96,6 +96,23 @@ healthRouter.get('/ready', async (_req: Request, res: Response) => {
   } catch (error) {
     res.status(503).json({ status: 'not ready' });
   }
+});
+
+// Diagnostic endpoint to check deployment configuration
+healthRouter.get('/diagnostics', async (_req: Request, res: Response) => {
+  const diagnostics = {
+    timestamp: new Date().toISOString(),
+    serverSigningAvailable: isServerSigningAvailable(),
+    deployerPublicKey: getDeployerPublicKey() ? getDeployerPublicKey()?.slice(0, 20) + '...' : null,
+    envVarsPresent: {
+      CASPER_SECRET_KEY_PEM: !!process.env.CASPER_SECRET_KEY_PEM,
+      CASPER_PUBLIC_KEY_PEM: !!process.env.CASPER_PUBLIC_KEY_PEM,
+      CASPER_PUBLIC_KEY_HEX: !!process.env.CASPER_PUBLIC_KEY_HEX,
+      CASPER_NODE_URL: !!process.env.CASPER_NODE_URL,
+      WORKFLOW_CONTRACT_HASH: !!process.env.WORKFLOW_CONTRACT_HASH,
+    },
+  };
+  res.json(diagnostics);
 });
 
 // Database seeding endpoint (for Railway deployment)
