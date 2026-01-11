@@ -15,6 +15,7 @@ const configSchema = z.object({
   databaseUrl: z.string().min(1),
 
   // Redis
+  redisUrl: z.string().optional(), // Full Redis URL (e.g., from Railway)
   redisHost: z.string().default('localhost'),
   redisPort: z.coerce.number().int().positive().default(6379),
   redisPassword: z.string().optional(),
@@ -56,9 +57,10 @@ function loadConfig() {
     port: process.env.PORT,
     host: process.env.HOST,
     databaseUrl: process.env.DATABASE_URL,
-    redisHost: process.env.REDIS_HOST,
-    redisPort: process.env.REDIS_PORT,
-    redisPassword: process.env.REDIS_PASSWORD,
+    redisUrl: process.env.REDIS_URL,
+    redisHost: process.env.REDIS_HOST || process.env.REDISHOST, // Railway uses REDISHOST
+    redisPort: process.env.REDIS_PORT || process.env.REDISPORT, // Railway uses REDISPORT
+    redisPassword: process.env.REDIS_PASSWORD || process.env.REDISPASSWORD, // Railway uses REDISPASSWORD
     casperNodeUrl: process.env.CASPER_NODE_URL,
     casperChainName: process.env.CASPER_CHAIN_NAME,
     csprCloudAccessToken: process.env.CSPR_CLOUD_ACCESS_TOKEN,
