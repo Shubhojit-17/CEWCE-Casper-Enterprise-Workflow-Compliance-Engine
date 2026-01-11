@@ -9,7 +9,7 @@ import { z } from 'zod';
 const configSchema = z.object({
   nodeEnv: z.enum(['development', 'production', 'test']).default('development'),
   port: z.coerce.number().int().positive().default(3001),
-  host: z.string().default('localhost'),
+  host: z.string().default('0.0.0.0'),
 
   // Database
   databaseUrl: z.string().min(1),
@@ -40,7 +40,7 @@ const configSchema = z.object({
   jwtSecret: z.string().min(32),
   jwtExpiry: z.string().default('24h'),
 
-  // CORS
+  // CORS - supports comma-separated origins
   corsOrigin: z.string().default('http://localhost:5173'),
 
   // Logging

@@ -10,9 +10,10 @@ import { logger } from './lib/logger.js';
 import { prisma } from './lib/prisma.js';
 import { redis } from './lib/redis.js';
 import { initializeQueues } from './jobs/index.js';
+import { config } from './lib/config.js';
 
-const PORT = parseInt(process.env.PORT || '3001', 10);
-const HOST = process.env.HOST || 'localhost';
+const PORT = config.port;
+const HOST = config.host;
 
 async function main(): Promise<void> {
   logger.info('Starting CEWCE Backend...');
