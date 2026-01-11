@@ -5,6 +5,10 @@
 // Reference: https://github.com/casper-ecosystem/casper-js-sdk
 // =============================================================================
 
+// CRITICAL: Import deployer-keys first to ensure keys are written to /tmp/casper
+// before we try to load them below. This module self-initializes on import.
+import './deployer-keys.js';
+
 import CasperSDK from 'casper-js-sdk';
 const {
   CasperClient,

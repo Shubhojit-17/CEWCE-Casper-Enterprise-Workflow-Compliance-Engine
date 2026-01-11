@@ -4,7 +4,7 @@
 // Loads Casper deployer keys from environment variables (plain PEM format)
 // and writes them to /tmp/casper/ for the Casper SDK to use.
 // 
-// This runs ONCE at application startup, BEFORE any Casper SDK code.
+// This runs ONCE at module load time, BEFORE any Casper SDK code.
 // =============================================================================
 
 import { existsSync, mkdirSync, writeFileSync, chmodSync } from 'fs';
@@ -82,3 +82,9 @@ export function initializeDeployerKeys(): boolean {
 export function areDeployerKeysAvailable(): boolean {
   return existsSync(SECRET_KEY_PATH) && existsSync(PUBLIC_KEY_PATH);
 }
+
+// =============================================================================
+// IMPORTANT: Run initialization immediately when this module is first imported
+// This ensures keys are written to disk before casper.ts tries to read them
+// =============================================================================
+initializeDeployerKeys();
