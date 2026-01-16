@@ -11,6 +11,7 @@ import { redis } from '../lib/redis.js';
 import { prisma } from '../lib/prisma.js';
 import { logger } from '../lib/logger.js';
 import { getDeployInfo, parseDeployConfirmation } from '../lib/casper.js';
+import { processApprovedWorkflowComplianceProof } from '../services/compliance-proof.js';
 
 const QUEUE_NAME = 'deploy-confirmation';
 
@@ -129,6 +130,45 @@ async function handleSuccessfulTransition(
     blockHash,
     explorerUrl: `https://testnet.cspr.live/deploy/${deployHash}`
   }, 'Workflow instance state updated - ON-CHAIN CONFIRMED');
+
+  // ==========================================================================
+  // COMPLIANCE PROOF GENERATION
+  // ==========================================================================
+  // If this is a final approval (state 10 = APPROVED), generate and register
+  // a compliance proof that anchors document hashes on-chain.
+  // ==========================================================================
+  const isApproval = toState === 10 || targetState?.name?.toLowerCase() === 'approved';
+  
+  if (isApproval && isTerminal) {
+    logger.info({ instanceId, deployHash }, 'Triggering compliance proof generation for approved workflow');
+    
+    // Get the approver's account hash from the transition actor
+    const approverAccountHash = transition?.actorId 
+      ? await getApproverAccountHash(transition.actorId)
+      : 'unknown';
+    
+    // Process asynchronously - don't block the confirmation
+    processApprovedWorkflowComplianceProof(
+      instanceId,
+      deployHash,
+      blockHash,
+      approverAccountHash
+    ).catch(error => {
+      logger.error({ error, instanceId }, 'Failed to process compliance proof');
+    });
+  }
+}
+
+/**
+ * Get the account hash for a user (approver).
+ */
+async function getApproverAccountHash(userId: string): Promise<string> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { accountHash: true, publicKey: true },
+  });
+  
+  return user?.accountHash || user?.publicKey || 'unknown';
 }
 
 /**

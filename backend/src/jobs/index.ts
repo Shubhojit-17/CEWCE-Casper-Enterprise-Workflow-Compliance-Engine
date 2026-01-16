@@ -10,6 +10,7 @@ import { initializeSlaMonitorWorker } from './sla-monitor.js';
 import { initializeDeployConfirmationWorker, addDeployConfirmationJob } from './deploy-confirmation.js';
 import { initializeTemplateRegistrationWorker, addTemplateRegistrationJob } from './template-registration.js';
 import { initializeInstanceRegistrationWorker, addInstanceRegistrationJob } from './instance-registration.js';
+import { initializeComplianceProofConfirmationWorker, addComplianceProofConfirmationJob } from './compliance-proof-confirmation.js';
 
 /**
  * Retry pending template registrations on startup.
@@ -144,6 +145,47 @@ async function retryPendingTransitions(): Promise<void> {
 }
 
 /**
+ * Retry pending compliance proof confirmations on startup.
+ * Finds proofs with proofDeployHash but status is ONCHAIN_PENDING
+ * and re-queues them for confirmation.
+ */
+async function retryPendingComplianceProofs(): Promise<void> {
+  try {
+    const pendingProofs = await prisma.complianceProof.findMany({
+      where: {
+        proofDeployHash: { not: null },
+        status: 'ONCHAIN_PENDING',
+      },
+      select: {
+        id: true,
+        proofDeployHash: true,
+        instanceId: true,
+      },
+    });
+
+    if (pendingProofs.length === 0) {
+      logger.info('No pending compliance proofs to retry');
+      return;
+    }
+
+    logger.info({ count: pendingProofs.length }, 'Found pending compliance proofs, queuing for retry');
+
+    for (const proof of pendingProofs) {
+      if (proof.proofDeployHash) {
+        await addComplianceProofConfirmationJob(proof.proofDeployHash, proof.id, 1);
+        logger.info({ 
+          proofId: proof.id, 
+          instanceId: proof.instanceId,
+          deployHash: proof.proofDeployHash 
+        }, 'Queued pending compliance proof for retry');
+      }
+    }
+  } catch (error) {
+    logger.error({ error }, 'Failed to retry pending compliance proofs');
+  }
+}
+
+/**
  * Initialize all background job workers.
  */
 export async function initializeQueues(): Promise<void> {
@@ -177,6 +219,13 @@ export async function initializeQueues(): Promise<void> {
     logger.error({ error }, 'Failed to initialize instance registration worker');
   }
 
+  try {
+    await initializeComplianceProofConfirmationWorker();
+    logger.info('Compliance proof confirmation worker initialized');
+  } catch (error) {
+    logger.error({ error }, 'Failed to initialize compliance proof confirmation worker');
+  }
+
   logger.info('Job queue initialization complete');
 
   // Retry any pending confirmations from previous runs
@@ -184,5 +233,6 @@ export async function initializeQueues(): Promise<void> {
   await retryPendingTemplateRegistrations();
   await retryPendingInstanceRegistrations();
   await retryPendingTransitions();
+  await retryPendingComplianceProofs();
   logger.info('Startup retry check complete');
 }

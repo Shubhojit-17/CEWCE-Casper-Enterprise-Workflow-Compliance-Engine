@@ -237,6 +237,7 @@ model WorkflowInstance {
   
   comments         WorkflowComment[]
   documents        WorkflowDocument[]
+  complianceProof  ComplianceProof?
   assignedApprover User?              @relation("ApproverAssignment", fields: [assignedApproverId], references: [id])
   assignedCustomer User?              @relation("CustomerAssignment", fields: [assignedCustomerId], references: [id])
   creator          User               @relation("InstanceCreator", fields: [creatorId], references: [id])
@@ -433,4 +434,56 @@ enum DeployQueueStatus {
   FAILED
   
   @@map("deploy_queue_status")
+}
+
+// =============================================================================
+// Compliance Proofs
+// =============================================================================
+
+model ComplianceProof {
+  id                String   @id @default(cuid())
+  instanceId        String   @unique @map("instance_id")
+  workflowId        String   @map("workflow_id")
+  templateId        String   @map("template_id")
+  finalState        String   @map("final_state")
+  approvedBy        String   @map("approved_by")
+  approvedAt        DateTime @map("approved_at")
+  
+  // Document hashes at time of approval
+  documentHashes    Json     @map("document_hashes")
+  
+  // Blockchain references
+  contractHash      String   @map("contract_hash")
+  approvalDeployHash String  @map("approval_deploy_hash")
+  approvalBlockHash String?  @map("approval_block_hash")
+  
+  // Proof registration on-chain
+  proofHash         String   @map("proof_hash")
+  proofDeployHash   String?  @map("proof_deploy_hash")
+  proofBlockHash    String?  @map("proof_block_hash")
+  
+  // Full proof JSON for export/verification
+  proofJson         Json     @map("proof_json")
+  
+  // Status tracking
+  status            ComplianceProofStatus @default(PENDING)
+  error             String?  @map("error_message")
+  
+  createdAt         DateTime @default(now()) @map("created_at")
+  confirmedAt       DateTime? @map("confirmed_at")
+  
+  instance          WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  
+  @@index([status])
+  @@index([proofHash])
+  @@map("compliance_proofs")
+}
+
+enum ComplianceProofStatus {
+  PENDING
+  ONCHAIN_PENDING
+  CONFIRMED
+  FAILED
+  
+  @@map("compliance_proof_status")
 }

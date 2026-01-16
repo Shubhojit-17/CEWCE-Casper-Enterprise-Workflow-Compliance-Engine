@@ -21,6 +21,10 @@ import { AuditLogPage } from './pages/audit/AuditLogPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { WalletPage } from './pages/wallet/WalletPage';
 import { UsersPage } from './pages/users/UsersPage';
+import VerifyCompliancePage from './pages/compliance/VerifyCompliancePage';
+
+// Main Landing Page (scroll-driven narrative UX)
+import { LandingPage } from './pages/LandingPage';
 
 // Protected Route Wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -97,6 +101,12 @@ function App() {
           <Route path="reset-password" element={<ResetPasswordPage />} />
         </Route>
 
+        {/* Public Verification Page (no auth required) */}
+        <Route path="/verify" element={<VerifyCompliancePage />} />
+
+        {/* Main Landing Page (public, no auth required) */}
+        <Route path="/landing" element={<LandingPage />} />
+
         {/* Protected Routes */}
         <Route
           path="/"
@@ -118,8 +128,8 @@ function App() {
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Fallback - redirect to landing for unknown routes */}
+        <Route path="*" element={<Navigate to="/landing" replace />} />
       </Routes>
     </BrowserRouter>
   );

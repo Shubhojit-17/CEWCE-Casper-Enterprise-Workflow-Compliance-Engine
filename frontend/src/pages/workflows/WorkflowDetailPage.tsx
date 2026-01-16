@@ -19,6 +19,7 @@ import {
   ArrowUpTrayIcon,
   TrashIcon,
   ArrowDownTrayIcon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
@@ -49,6 +50,19 @@ interface WorkflowDocument {
   size: number;
   checksum: string;
   createdAt: string;
+}
+
+interface ComplianceProof {
+  id: string;
+  instanceId: string;
+  workflowId: string | null;
+  proofHash: string | null;
+  proofDeployHash: string | null;
+  proofBlockHash: string | null;
+  status: 'PENDING' | 'ONCHAIN_PENDING' | 'CONFIRMED' | 'FAILED';
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export function WorkflowDetailPage() {
@@ -124,6 +138,32 @@ export function WorkflowDetailPage() {
     },
     enabled: isValidId && !!workflow,
     retry: false,
+  });
+
+  // Fetch compliance proof for completed workflows
+  const { data: complianceProof, isLoading: proofLoading } = useQuery<ComplianceProof | null>({
+    queryKey: ['compliance-proof', id],
+    queryFn: async () => {
+      try {
+        const response = await api.get<{ data: ComplianceProof }>(
+          `/compliance-proofs/instance/${id}`
+        );
+        return response.data.data;
+      } catch {
+        // Proof may not exist yet
+        return null;
+      }
+    },
+    enabled: isValidId && !!workflow && isWorkflowCompleted,
+    retry: false,
+    // Refetch periodically if proof is pending
+    refetchInterval: (query) => {
+      const data = query.state.data as ComplianceProof | null | undefined;
+      if (data?.status === 'PENDING' || data?.status === 'ONCHAIN_PENDING') {
+        return 5000;
+      }
+      return false;
+    },
   });
 
   // Upload document mutation
@@ -364,6 +404,33 @@ export function WorkflowDetailPage() {
       document.body.removeChild(a);
     } catch (error) {
       toast.error('Failed to download document');
+    }
+  };
+
+  // Handle compliance proof export
+  const handleExportProof = async () => {
+    try {
+      const response = await api.get<{ data: { proofJson: object } }>(
+        `/compliance-proofs/export/${id}`
+      );
+      const proofJson = response.data.data.proofJson;
+      
+      // Create JSON blob
+      const blob = new Blob([JSON.stringify(proofJson, null, 2)], { type: 'application/json' });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `compliance-proof-${workflow?.workflowId || id}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success('Compliance proof exported successfully');
+    } catch (error) {
+      toast.error('Failed to export compliance proof');
     }
   };
 
@@ -758,6 +825,130 @@ export function WorkflowDetailPage() {
               </dl>
             </div>
           </div>
+
+          {/* Compliance Proof Section - Only for completed workflows */}
+          {isWorkflowCompleted && (
+            <div className="card border-2 border-green-200 bg-green-50">
+              <div className="card-header bg-green-100">
+                <h2 className="text-lg font-medium text-green-900 flex items-center gap-2">
+                  <ShieldCheckIcon className="h-5 w-5" />
+                  Verifiable Compliance Proof
+                </h2>
+              </div>
+              <div className="card-body">
+                {proofLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                    <span>Loading compliance proof...</span>
+                  </div>
+                ) : complianceProof ? (
+                  <div className="space-y-4">
+                    {/* Proof Status */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-700">Status:</span>
+                      {complianceProof.status === 'CONFIRMED' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <CheckCircleIcon className="h-3 w-3" />
+                          Verified On-Chain
+                        </span>
+                      )}
+                      {complianceProof.status === 'ONCHAIN_PENDING' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <ArrowPathIcon className="h-3 w-3 animate-spin" />
+                          Pending Confirmation
+                        </span>
+                      )}
+                      {complianceProof.status === 'PENDING' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          <ClockIcon className="h-3 w-3" />
+                          Processing
+                        </span>
+                      )}
+                      {complianceProof.status === 'FAILED' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                          <XCircleIcon className="h-3 w-3" />
+                          Failed
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Proof Hash */}
+                    {complianceProof.proofHash && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Proof Hash</dt>
+                        <dd className="mt-1 flex items-center gap-2">
+                          <span className="text-sm font-mono text-gray-900">
+                            {truncateHash(complianceProof.proofHash)}
+                          </span>
+                          <button
+                            onClick={() => copyToClipboard(complianceProof.proofHash!)}
+                            className="text-xs text-gray-400 hover:text-gray-600"
+                            title="Copy full hash"
+                          >
+                            Copy
+                          </button>
+                        </dd>
+                      </div>
+                    )}
+
+                    {/* Deploy Hash */}
+                    {complianceProof.proofDeployHash && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Proof Deploy</dt>
+                        <dd className="mt-1">
+                          <a
+                            href={`https://testnet.cspr.live/deploy/${complianceProof.proofDeployHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-mono text-enterprise-primary hover:underline"
+                          >
+                            {truncateHash(complianceProof.proofDeployHash)}
+                          </a>
+                        </dd>
+                      </div>
+                    )}
+
+                    {/* Error message */}
+                    {complianceProof.error && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                        <p className="text-sm text-red-700">{complianceProof.error}</p>
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    {complianceProof.status === 'CONFIRMED' && (
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        <button
+                          onClick={handleExportProof}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                        >
+                          <ArrowDownTrayIcon className="h-4 w-4" />
+                          Export Proof JSON
+                        </button>
+                        <Link
+                          to="/verify"
+                          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700"
+                        >
+                          <ShieldCheckIcon className="h-4 w-4" />
+                          Verify Proof
+                        </Link>
+                      </div>
+                    )}
+
+                    <p className="text-xs text-gray-500">
+                      This cryptographic proof verifies that the workflow reached final approval
+                      with specific documents reviewed. It is permanently anchored on the Casper blockchain.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500">
+                    <p>Compliance proof is being generated...</p>
+                    <p className="text-xs mt-1">This process may take a few moments.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Approver Action Section - Only for approvers when workflow is pending approval */}
           {workflow.canApprove && (

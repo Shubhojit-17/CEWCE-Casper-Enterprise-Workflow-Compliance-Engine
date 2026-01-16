@@ -20,6 +20,7 @@ import { workflowInstancesRouter } from './routes/workflow-instances.js';
 import { usersRouter } from './routes/users.js';
 import { auditRouter } from './routes/audit.js';
 import { casperRouter } from './routes/casper.js';
+import { complianceProofRouter } from './routes/compliance-proofs.js';
 
 // Middleware imports
 import { errorHandler } from './middleware/error-handler.js';
@@ -113,6 +114,9 @@ export function createServer(): Express {
   
   // Casper blockchain interactions
   apiRouter.use('/casper', casperRouter);
+  
+  // Compliance proof verification
+  apiRouter.use('/compliance-proofs', complianceProofRouter);
 
   // Mount API router
   app.use('/api/v1', apiRouter);

@@ -448,6 +448,55 @@ export function buildTransitionStateDeployServerSide(
 }
 
 /**
+ * Build a deploy for registering a compliance proof on-chain.
+ * 
+ * @param senderPublicKeyHex - Public key of the deployer
+ * @param workflowId - The on-chain workflow ID (U256 as string)
+ * @param proofHash - SHA-256 hash of the compliance proof JSON (hex string)
+ * @param paymentAmount - CSPR payment amount (default 2 CSPR)
+ * @returns Deploy object or null if not available
+ */
+export function buildRegisterComplianceProofDeploy(
+  senderPublicKeyHex: string,
+  workflowId: string,
+  proofHash: string,
+  paymentAmount: string = '2000000000' // 2 CSPR default
+): DeployType | null {
+  if (!contractClient) {
+    logger.error('Contract client not initialized');
+    return null;
+  }
+
+  const senderPublicKey = CLPublicKey.fromHex(senderPublicKeyHex);
+
+  // Convert hex string to byte array
+  const proofHashBytes = new Uint8Array(
+    proofHash.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+  );
+
+  if (proofHashBytes.length !== 32) {
+    logger.error({ proofHash, length: proofHashBytes.length }, 'Invalid proof hash length');
+    return null;
+  }
+
+  const args = RuntimeArgs.fromMap({
+    workflow_id: CLValueBuilder.u256(workflowId),
+    proof_hash: new CLByteArray(proofHashBytes),
+  });
+
+  const deploy = contractClient.callEntrypoint(
+    'register_compliance_proof',
+    args,
+    senderPublicKey,
+    config.casperChainName,
+    paymentAmount
+  );
+
+  logger.debug({ workflowId, proofHash }, 'Built register_compliance_proof deploy');
+  return deploy;
+}
+
+/**
  * Submit a signed deploy to the network.
  */
 export async function submitDeploy(signedDeployJson: unknown): Promise<string> {

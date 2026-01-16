@@ -122,6 +122,14 @@ export const endpoints = {
     deploy: (hash: string) => `/casper/deploy/${hash}`,
     workflow: (workflowId: string) => `/casper/workflow/${workflowId}`,
   },
+  complianceProofs: {
+    list: '/compliance-proofs',
+    byInstance: (instanceId: string) => `/compliance-proofs/instance/${instanceId}`,
+    byHash: (proofHash: string) => `/compliance-proofs/hash/${proofHash}`,
+    verify: '/compliance-proofs/verify',
+    verifyDocuments: '/compliance-proofs/verify-documents',
+    export: (instanceId: string) => `/compliance-proofs/export/${instanceId}`,
+  },
   users: {
     list: '/users',
     get: (id: string) => `/users/${id}`,

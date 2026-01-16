@@ -77,6 +77,10 @@ pub enum WorkflowError {
     StorageError = 9,
     /// Arithmetic overflow
     Overflow = 10,
+    /// Compliance proof already registered
+    ComplianceProofAlreadyExists = 11,
+    /// Workflow not in approved state
+    WorkflowNotApproved = 12,
 }
 
 impl From<WorkflowError> for ApiError {
@@ -94,6 +98,9 @@ const WORKFLOWS_DICT: &str = "workflows";
 
 /// Dictionary name for storing transition history
 const TRANSITIONS_DICT: &str = "transitions";
+
+/// Dictionary name for storing compliance proofs
+const COMPLIANCE_PROOFS_DICT: &str = "compliance_proofs";
 
 /// Named key for workflow counter
 const WORKFLOW_COUNT_KEY: &str = "workflow_count";
@@ -312,6 +319,14 @@ fn get_workflows_dict() -> URef {
 /// Get the transitions dictionary URef.
 fn get_transitions_dict() -> URef {
     runtime::get_key(TRANSITIONS_DICT)
+        .unwrap_or_revert_with(ApiError::User(WorkflowError::StorageError as u16))
+        .into_uref()
+        .unwrap_or_revert_with(ApiError::User(WorkflowError::StorageError as u16))
+}
+
+/// Get the compliance proofs dictionary URef.
+fn get_compliance_proofs_dict() -> URef {
+    runtime::get_key(COMPLIANCE_PROOFS_DICT)
         .unwrap_or_revert_with(ApiError::User(WorkflowError::StorageError as u16))
         .into_uref()
         .unwrap_or_revert_with(ApiError::User(WorkflowError::StorageError as u16))
@@ -570,6 +585,77 @@ pub extern "C" fn get_workflow_count() {
     runtime::ret(CLValue::from_t(count).unwrap_or_revert());
 }
 
+/// Register a compliance proof for an approved workflow.
+/// 
+/// This entry point stores a cryptographic hash of the compliance proof JSON
+/// on-chain, providing immutable evidence that the workflow was approved
+/// with specific documents reviewed.
+///
+/// # Arguments
+///
+/// * `workflow_id` - The workflow ID (U256) to register proof for
+/// * `proof_hash` - SHA-256 hash of the compliance proof JSON (32 bytes)
+///
+/// # Errors
+///
+/// * `WorkflowNotFound` - Workflow does not exist
+/// * `WorkflowNotApproved` - Workflow is not in APPROVED state
+/// * `ComplianceProofAlreadyExists` - Proof already registered for this workflow
+#[no_mangle]
+pub extern "C" fn register_compliance_proof() {
+    // Get arguments
+    let workflow_id: U256 = runtime::get_named_arg("workflow_id");
+    let proof_hash: [u8; 32] = runtime::get_named_arg("proof_hash");
+    
+    // Load workflow to verify it exists and is approved
+    let workflows_dict = get_workflows_dict();
+    let key = workflow_id.to_string();
+    
+    let workflow: WorkflowData = storage::dictionary_get(workflows_dict, &key)
+        .unwrap_or_revert_with(ApiError::User(WorkflowError::StorageError as u16))
+        .unwrap_or_revert_with(ApiError::User(WorkflowError::WorkflowNotFound as u16));
+    
+    // Verify workflow is in APPROVED state
+    if workflow.current_state != states::APPROVED {
+        runtime::revert(ApiError::User(WorkflowError::WorkflowNotApproved as u16));
+    }
+    
+    // Check if proof already exists for this workflow
+    let proofs_dict = get_compliance_proofs_dict();
+    let existing: Option<[u8; 32]> = storage::dictionary_get(proofs_dict, &key)
+        .unwrap_or_revert_with(ApiError::User(WorkflowError::StorageError as u16));
+    
+    if existing.is_some() {
+        runtime::revert(ApiError::User(WorkflowError::ComplianceProofAlreadyExists as u16));
+    }
+    
+    // Store the compliance proof hash (immutable - can only be set once)
+    storage::dictionary_put(proofs_dict, &key, proof_hash);
+}
+
+/// Get the compliance proof hash for a workflow.
+///
+/// # Arguments
+///
+/// * `workflow_id` - The workflow to query
+///
+/// # Returns
+///
+/// The 32-byte proof hash, or reverts if not found
+#[no_mangle]
+pub extern "C" fn get_compliance_proof() {
+    let workflow_id: U256 = runtime::get_named_arg("workflow_id");
+    
+    let proofs_dict = get_compliance_proofs_dict();
+    let key = workflow_id.to_string();
+    
+    let proof_hash: [u8; 32] = storage::dictionary_get(proofs_dict, &key)
+        .unwrap_or_revert_with(ApiError::User(WorkflowError::StorageError as u16))
+        .unwrap_or_revert_with(ApiError::User(WorkflowError::WorkflowNotFound as u16));
+    
+    runtime::ret(CLValue::from_t(proof_hash).unwrap_or_revert());
+}
+
 // =============================================================================
 // Contract Installation
 // =============================================================================
@@ -583,6 +669,8 @@ pub extern "C" fn call() {
         .unwrap_or_revert_with(ApiError::User(WorkflowError::StorageError as u16));
     let transitions_dict = storage::new_dictionary(TRANSITIONS_DICT)
         .unwrap_or_revert_with(ApiError::User(WorkflowError::StorageError as u16));
+    let compliance_proofs_dict = storage::new_dictionary(COMPLIANCE_PROOFS_DICT)
+        .unwrap_or_revert_with(ApiError::User(WorkflowError::StorageError as u16));
     
     // Create workflow counter
     let workflow_count = storage::new_uref(U256::zero());
@@ -594,6 +682,7 @@ pub extern "C" fn call() {
     let mut named_keys = NamedKeys::new();
     named_keys.insert(WORKFLOWS_DICT.into(), Key::from(workflows_dict));
     named_keys.insert(TRANSITIONS_DICT.into(), Key::from(transitions_dict));
+    named_keys.insert(COMPLIANCE_PROOFS_DICT.into(), Key::from(compliance_proofs_dict));
     named_keys.insert(WORKFLOW_COUNT_KEY.into(), Key::from(workflow_count));
     named_keys.insert(CONTRACT_VERSION_KEY.into(), Key::from(contract_version_uref));
     
@@ -653,6 +742,29 @@ pub extern "C" fn call() {
         "get_workflow_count",
         vec![],
         CLType::U256,
+        EntryPointAccess::Public,
+        EntryPointType::Called,
+    ).into());
+    
+    // register_compliance_proof - stores proof hash for approved workflows
+    entry_points.add_entry_point(EntryPoint::new(
+        "register_compliance_proof",
+        vec![
+            Parameter::new("workflow_id", CLType::U256),
+            Parameter::new("proof_hash", CLType::ByteArray(32)),
+        ],
+        CLType::Unit,
+        EntryPointAccess::Public,
+        EntryPointType::Called,
+    ).into());
+    
+    // get_compliance_proof - retrieves proof hash for a workflow
+    entry_points.add_entry_point(EntryPoint::new(
+        "get_compliance_proof",
+        vec![
+            Parameter::new("workflow_id", CLType::U256),
+        ],
+        CLType::ByteArray(32),
         EntryPointAccess::Public,
         EntryPointType::Called,
     ).into());

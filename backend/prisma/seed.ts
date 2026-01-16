@@ -331,7 +331,9 @@ async function main() {
       orgId: defaultOrg.id,
       name: 'Purchase Approval',
       description: 'Standard purchase requisition approval workflow',
-      version: '1.0.0',
+      version: 1,
+      creatorId: adminUser.id,
+      roles: ['USER', 'REQUESTER', 'APPROVER', 'SENIOR_APPROVER', 'ADMIN'],
       states: [
         { id: 0, name: 'Draft', isInitial: true, isTerminal: false },
         { id: 1, name: 'Pending Review', isInitial: false, isTerminal: false },
