@@ -230,9 +230,9 @@ const demoRoleSchema = z.object({
 
 // Demo account email mapping (credentials stored securely in DB, not exposed)
 const DEMO_ACCOUNTS: Record<string, string> = {
-  requester: 'requester@cewce.local',
-  user: 'user1@cewce.local',
-  approver: 'approver@cewce.local',
+  requester: 'requester@cewce.io',
+  user: 'user1@cewce.io',
+  approver: 'approver@cewce.io',
 };
 
 authRouter.post('/demo', async (req: Request, res: Response, next: NextFunction) => {
