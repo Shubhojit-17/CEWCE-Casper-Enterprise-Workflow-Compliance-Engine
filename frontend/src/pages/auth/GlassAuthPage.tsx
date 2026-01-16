@@ -14,6 +14,9 @@ import { api } from '../../lib/api';
 import { ParticleBackground } from '../../components/auth/ParticleBackground';
 import { DEMO_ENABLED, useDemoContext } from '../../demo';
 
+// Debug: Log DEMO_ENABLED value on module load
+console.log('[GlassAuthPage] Module loaded - DEMO_ENABLED:', DEMO_ENABLED, 'Raw env:', import.meta.env.VITE_DEMO_MODE);
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -889,8 +892,20 @@ function WalletButton({ isLoading, onClick }: WalletButtonProps) {
 function DemoButton() {
   const demo = useDemoContext();
 
-  // Don't render if demo context is not available
-  if (!demo) return null;
+  // Log for debugging (can be removed later)
+  console.log('[Demo] DEMO_ENABLED:', DEMO_ENABLED, 'env value:', import.meta.env.VITE_DEMO_MODE);
+  console.log('[Demo] Demo context available:', !!demo);
+
+  // Show button even if context is initializing - it will work once clicked
+  // The button should be visible as long as DEMO_ENABLED is true
+  
+  const handleStartDemo = () => {
+    if (demo) {
+      demo.startDemo();
+    } else {
+      console.error('[Demo] Context not available - ensure ConditionalDemoProvider wraps the app');
+    }
+  };
 
   return (
     <div className="mt-6">
@@ -909,7 +924,7 @@ function DemoButton() {
       {/* Demo Button */}
       <motion.button
         type="button"
-        onClick={demo.startDemo}
+        onClick={handleStartDemo}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         className="w-full py-3.5 px-6 rounded-full font-semibold text-white transition-all duration-300 flex items-center justify-center gap-3 uppercase tracking-wider text-sm"
