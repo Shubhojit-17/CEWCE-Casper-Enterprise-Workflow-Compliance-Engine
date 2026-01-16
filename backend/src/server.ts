@@ -20,7 +20,6 @@ import { workflowInstancesRouter } from './routes/workflow-instances.js';
 import { usersRouter } from './routes/users.js';
 import { auditRouter } from './routes/audit.js';
 import { casperRouter } from './routes/casper.js';
-import { complianceProofRouter } from './routes/compliance-proofs.js';
 
 // Middleware imports
 import { errorHandler } from './middleware/error-handler.js';
@@ -54,9 +53,9 @@ export function createServer(): Express {
       }
       
       // In development or production, allow if origin matches pattern
-      // This helps with Vercel preview deployments and Railway
-      if (origin.includes('vercel.app') || origin.includes('localhost') || origin.includes('railway.app') || origin.includes('up.railway.app')) {
-        logger.info({ origin }, 'Allowing Vercel/Railway/localhost origin');
+      // This helps with Vercel preview deployments
+      if (origin.includes('vercel.app') || origin.includes('localhost')) {
+        logger.info({ origin }, 'Allowing Vercel/localhost origin');
         return callback(null, true);
       }
       
@@ -114,9 +113,6 @@ export function createServer(): Express {
   
   // Casper blockchain interactions
   apiRouter.use('/casper', casperRouter);
-  
-  // Compliance proof verification
-  apiRouter.use('/compliance-proofs', complianceProofRouter);
 
   // Mount API router
   app.use('/api/v1', apiRouter);
