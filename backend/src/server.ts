@@ -54,9 +54,9 @@ export function createServer(): Express {
       }
       
       // In development or production, allow if origin matches pattern
-      // This helps with Vercel preview deployments
-      if (origin.includes('vercel.app') || origin.includes('localhost')) {
-        logger.info({ origin }, 'Allowing Vercel/localhost origin');
+      // This helps with Vercel preview deployments and Railway
+      if (origin.includes('vercel.app') || origin.includes('localhost') || origin.includes('railway.app') || origin.includes('up.railway.app')) {
+        logger.info({ origin }, 'Allowing Vercel/Railway/localhost origin');
         return callback(null, true);
       }
       
