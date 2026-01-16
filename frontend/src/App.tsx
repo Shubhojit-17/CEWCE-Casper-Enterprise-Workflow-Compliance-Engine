@@ -3,6 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/auth';
 import { useWalletStore } from './stores/wallet';
 
+// Demo Mode (TESTNET ONLY - safe to remove for mainnet)
+import { ConditionalDemoProvider, DemoOverlay, DEMO_ENABLED } from './demo';
+
 // Layouts
 import { DashboardLayout } from './layouts/DashboardLayout';
 
@@ -85,19 +88,23 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Auth Routes - New Glassmorphism Design */}
-        <Route
-          path="/auth/login"
-          element={
-            <PublicRoute>
-              <GlassAuthPage />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/auth/register"
-          element={
+      <ConditionalDemoProvider>
+        {/* Demo Overlay (only renders if DEMO_ENABLED and demo is active) */}
+        {DEMO_ENABLED && <DemoOverlay />}
+        
+        <Routes>
+          {/* Auth Routes - New Glassmorphism Design */}
+          <Route
+            path="/auth/login"
+            element={
+              <PublicRoute>
+                <GlassAuthPage />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/auth/register"
+            element={
             <PublicRoute>
               <GlassAuthPage />
             </PublicRoute>
@@ -140,7 +147,8 @@ function App() {
 
         {/* Fallback - redirect to landing for unknown routes */}
         <Route path="*" element={<Navigate to="/landing" replace />} />
-      </Routes>
+        </Routes>
+      </ConditionalDemoProvider>
     </BrowserRouter>
   );
 }

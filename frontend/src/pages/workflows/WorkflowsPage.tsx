@@ -171,7 +171,11 @@ export function WorkflowsPage() {
           </p>
         </div>
         {canCreateWorkflow && (
-          <Link to="/app/workflows/new" className="btn-dark-primary">
+          <Link 
+            to="/app/workflows/new" 
+            className="btn-dark-primary"
+            data-demo-target="create-workflow-btn"
+          >
             <PlusIcon className="h-5 w-5 mr-2" />
             New Workflow
           </Link>
