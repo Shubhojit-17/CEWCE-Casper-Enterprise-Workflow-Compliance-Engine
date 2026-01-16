@@ -27,16 +27,16 @@ import { cn, truncateHash } from '../lib/utils';
 // Navigation items - Users is only shown to ADMIN
 // Templates only for REQUESTER, MANAGER, ADMIN
 const baseNavigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: HomeIcon, roles: null }, // all roles
-  { name: 'Workflows', href: '/workflows', icon: DocumentDuplicateIcon, roles: null }, // all roles
-  { name: 'Templates', href: '/templates', icon: ClipboardDocumentListIcon, roles: ['REQUESTER', 'MANAGER', 'ADMIN'] },
-  { name: 'Audit Log', href: '/audit', icon: ShieldCheckIcon, roles: ['ADMIN', 'AUDITOR', 'MANAGER'] },
-  { name: 'Wallet', href: '/wallet', icon: WalletIcon, roles: null }, // all roles
-  { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, roles: null }, // all roles
+  { name: 'Dashboard', href: '/app/dashboard', icon: HomeIcon, roles: null }, // all roles
+  { name: 'Workflows', href: '/app/workflows', icon: DocumentDuplicateIcon, roles: null }, // all roles
+  { name: 'Templates', href: '/app/templates', icon: ClipboardDocumentListIcon, roles: ['REQUESTER', 'MANAGER', 'ADMIN'] },
+  { name: 'Audit Log', href: '/app/audit', icon: ShieldCheckIcon, roles: ['ADMIN', 'AUDITOR', 'MANAGER'] },
+  { name: 'Wallet', href: '/app/wallet', icon: WalletIcon, roles: null }, // all roles
+  { name: 'Settings', href: '/app/settings', icon: Cog6ToothIcon, roles: null }, // all roles
 ];
 
 const adminNavigation = [
-  { name: 'Users', href: '/users', icon: UsersIcon, roles: ['ADMIN'] },
+  { name: 'Users', href: '/app/users', icon: UsersIcon, roles: ['ADMIN'] },
 ];
 
 export function DashboardLayout() {
@@ -62,7 +62,7 @@ export function DashboardLayout() {
     // Clear all cached queries to prevent stale data from previous user
     queryClient.clear();
     logout();
-    navigate('/auth/login');
+    navigate('/');
   };
 
   return (
@@ -295,7 +295,7 @@ export function DashboardLayout() {
                     <Menu.Item>
                       {({ active }) => (
                         <Link
-                          to="/settings"
+                          to="/app/settings"
                           className={cn(
                             active ? 'bg-gray-50' : '',
                             'block px-3 py-1 text-sm leading-6 text-gray-900'

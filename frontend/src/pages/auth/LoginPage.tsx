@@ -124,7 +124,7 @@ export function LoginPage() {
         useWalletStore.getState().fetchBalance();
       }, 100);
       
-      navigate('/dashboard');
+      navigate('/app/dashboard');
     } catch (error) {
       console.error('Wallet sign-in failed:', error);
       const err = error as { response?: { data?: { error?: { message?: string } } } };

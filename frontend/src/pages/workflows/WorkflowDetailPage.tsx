@@ -322,7 +322,7 @@ export function WorkflowDetailPage() {
   const handleTransition = (transition: AvailableTransition) => {
     if (!isConnected) {
       toast.error('Please connect your Casper Wallet first');
-      navigate('/wallet');
+      navigate('/app/wallet');
       return;
     }
     setSelectedTransition(transition);
@@ -448,7 +448,7 @@ export function WorkflowDetailPage() {
           <ExclamationTriangleIcon className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
           <h2 className="text-lg font-medium text-gray-900 mb-2">Invalid Workflow ID</h2>
           <p className="text-sm text-gray-500 mb-4">The workflow ID is invalid or missing.</p>
-          <button onClick={() => navigate('/workflows')} className="btn btn-primary">
+          <button onClick={() => navigate('/app/workflows')} className="btn btn-primary">
             Back to Workflows
           </button>
         </div>
@@ -474,7 +474,7 @@ export function WorkflowDetailPage() {
           <XCircleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-lg font-medium text-gray-900 mb-2">Workflow Not Found</h2>
           <p className="text-sm text-gray-500 mb-4">The requested workflow could not be found.</p>
-          <button onClick={() => navigate('/workflows')} className="btn btn-primary">
+          <button onClick={() => navigate('/app/workflows')} className="btn btn-primary">
             Back to Workflows
           </button>
         </div>
@@ -486,7 +486,7 @@ export function WorkflowDetailPage() {
     return (
       <div className="text-center py-12">
         <h2 className="text-xl font-medium text-gray-900">Workflow not found</h2>
-        <Link to="/workflows" className="mt-4 text-enterprise-primary hover:underline">
+        <Link to="/app/workflows" className="mt-4 text-enterprise-primary hover:underline">
           Back to workflows
         </Link>
       </div>
@@ -499,7 +499,7 @@ export function WorkflowDetailPage() {
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/workflows')}
+            onClick={() => navigate('/app/workflows')}
             className="p-2 hover:bg-gray-100 rounded-lg"
           >
             <ArrowLeftIcon className="h-5 w-5 text-gray-500" />

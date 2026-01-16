@@ -56,10 +56,10 @@ export function CreateWorkflowPage() {
       // Response structure: { success, data: { instance, deploy, message } }
       const workflowId = data.data?.instance?.id;
       if (workflowId) {
-        navigate(`/workflows/${workflowId}`);
+        navigate(`/app/workflows/${workflowId}`);
       } else {
         // Fallback to workflows list if ID not returned
-        navigate('/workflows');
+        navigate('/app/workflows');
       }
     },
     onError: () => {
@@ -257,7 +257,7 @@ export function CreateWorkflowPage() {
         <div className="flex justify-end gap-4">
           <button
             type="button"
-            onClick={() => navigate('/workflows')}
+            onClick={() => navigate('/app/workflows')}
             className="btn-secondary"
           >
             Cancel

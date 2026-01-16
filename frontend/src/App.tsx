@@ -58,7 +58,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/app/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -104,19 +104,20 @@ function App() {
         {/* Public Verification Page (no auth required) */}
         <Route path="/verify" element={<VerifyCompliancePage />} />
 
-        {/* Main Landing Page (public, no auth required) */}
+        {/* Main Landing Page (public, no auth required) - Default route */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/landing" element={<LandingPage />} />
 
         {/* Protected Routes */}
         <Route
-          path="/"
+          path="/app"
           element={
             <ProtectedRoute>
               <DashboardLayout />
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route index element={<Navigate to="/app/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="workflows" element={<WorkflowsPage />} />
           <Route path="workflows/new" element={<CreateWorkflowPage />} />
@@ -127,6 +128,10 @@ function App() {
           <Route path="wallet" element={<WalletPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
+
+        {/* Legacy routes - redirect to new /app paths */}
+        <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
+        <Route path="/workflows/*" element={<Navigate to="/app/workflows" replace />} />
 
         {/* Fallback - redirect to landing for unknown routes */}
         <Route path="*" element={<Navigate to="/landing" replace />} />

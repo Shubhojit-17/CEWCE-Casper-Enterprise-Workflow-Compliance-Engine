@@ -154,7 +154,7 @@ export function DashboardPage() {
           </p>
         </div>
         {canCreateWorkflow && (
-          <Link to="/workflows/new" className="btn-primary">
+          <Link to="/app/workflows/new" className="btn-primary">
             Create Workflow
           </Link>
         )}
@@ -237,7 +237,7 @@ export function DashboardPage() {
         <div className="card">
           <div className="card-header flex items-center justify-between">
             <h2 className="text-lg font-medium text-gray-900">Recent Workflows</h2>
-            <Link to="/workflows" className="text-sm text-enterprise-primary hover:text-blue-800">
+            <Link to="/app/workflows" className="text-sm text-enterprise-primary hover:text-blue-800">
               View all
             </Link>
           </div>
@@ -258,7 +258,7 @@ export function DashboardPage() {
                 {recentWorkflows.map((workflow) => (
                   <li key={workflow.id}>
                     <Link
-                      to={`/workflows/${workflow.id}`}
+                      to={`/app/workflows/${workflow.id}`}
                       className="block px-6 py-4 hover:bg-gray-50"
                     >
                       <div className="flex items-center justify-between">
@@ -287,7 +287,7 @@ export function DashboardPage() {
             ) : (
               <div className="p-6 text-center text-gray-500">
                 No workflows yet.{' '}
-                <Link to="/workflows/new" className="text-enterprise-primary hover:underline">
+                <Link to="/app/workflows/new" className="text-enterprise-primary hover:underline">
                   Create your first workflow
                 </Link>
               </div>
@@ -299,7 +299,7 @@ export function DashboardPage() {
         <div className="card">
           <div className="card-header flex items-center justify-between">
             <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
-            <Link to="/audit" className="text-sm text-enterprise-primary hover:text-blue-800">
+            <Link to="/app/audit" className="text-sm text-enterprise-primary hover:text-blue-800">
               View audit log
             </Link>
           </div>

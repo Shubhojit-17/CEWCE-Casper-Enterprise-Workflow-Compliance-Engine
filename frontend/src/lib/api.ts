@@ -37,9 +37,9 @@ api.interceptors.response.use(
 
       switch (status) {
         case 401:
-          // Unauthorized - clear auth and redirect
+          // Unauthorized - clear auth and redirect to landing
           localStorage.removeItem('cewce-auth');
-          window.location.href = '/auth/login';
+          window.location.href = '/';
           break;
         case 403:
           toast.error('Access denied. You do not have permission.');

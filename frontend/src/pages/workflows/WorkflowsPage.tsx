@@ -132,7 +132,7 @@ export function WorkflowsPage() {
           </p>
         </div>
         {canCreateWorkflow && (
-          <Link to="/workflows/new" className="btn-primary">
+          <Link to="/app/workflows/new" className="btn-primary">
             <PlusIcon className="h-5 w-5 mr-2" />
             New Workflow
           </Link>
@@ -249,7 +249,7 @@ export function WorkflowsPage() {
                   <tr key={workflow.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link
-                        to={`/workflows/${workflow.id}`}
+                        to={`/app/workflows/${workflow.id}`}
                         className="text-sm font-medium text-gray-900 hover:text-enterprise-primary"
                       >
                         {workflow.title}
@@ -282,7 +282,7 @@ export function WorkflowsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link
-                        to={`/workflows/${workflow.id}`}
+                        to={`/app/workflows/${workflow.id}`}
                         className="text-enterprise-primary hover:text-blue-800"
                       >
                         View
@@ -295,7 +295,7 @@ export function WorkflowsPage() {
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                     No workflows found.{' '}
                     <Link
-                      to="/workflows/new"
+                      to="/app/workflows/new"
                       className="text-enterprise-primary hover:underline"
                     >
                       Create your first workflow
