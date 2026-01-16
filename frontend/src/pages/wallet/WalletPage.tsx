@@ -1,5 +1,5 @@
 // =============================================================================
-// Wallet Page
+// Wallet Page - Luminous Dark Cyberpunk Enterprise Theme
 // =============================================================================
 
 import { useWalletStore } from '../../stores/wallet';
@@ -10,6 +10,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ClipboardDocumentIcon,
+  ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { truncateHash, copyToClipboard } from '../../lib/utils';
@@ -62,33 +63,34 @@ export function WalletPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Wallet Management</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-white">Wallet Management</h1>
+        <p className="mt-1 text-sm text-slate-400">
           Connect and manage your Casper wallet for blockchain transactions
         </p>
       </div>
 
       {/* Connection Status */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="text-lg font-medium text-gray-900">Wallet Status</h2>
+      <div className="glass-card">
+        <div className="glass-card-header">
+          <h2 className="text-lg font-medium text-white">Wallet Status</h2>
         </div>
-        <div className="card-body">
+        <div className="glass-card-body">
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
               <div className="flex items-center gap-2">
-                <XCircleIcon className="h-5 w-5 text-red-500 flex-shrink-0" />
+                <XCircleIcon className="h-5 w-5 text-red-400 flex-shrink-0" />
                 <div>
-                  <p className="text-sm text-red-700">{error}</p>
+                  <p className="text-sm text-red-400">{error}</p>
                   {(error.includes('not found') || error.includes('not installed')) && (
-                    <p className="text-sm text-red-600 mt-1">
+                    <p className="text-sm text-red-300 mt-1">
                       <a
                         href="https://www.casperwallet.io/"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="underline hover:no-underline"
+                        className="underline hover:no-underline flex items-center gap-1"
                       >
-                        Download Casper Wallet →
+                        Download Casper Wallet
+                        <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
                       </a>
                     </p>
                   )}
@@ -101,58 +103,59 @@ export function WalletPage() {
             <div className="space-y-6">
               {/* Connected State */}
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
-                  <CheckCircleIcon className="h-6 w-6 text-green-600" />
+                <div className="h-12 w-12 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center">
+                  <CheckCircleIcon className="h-6 w-6 text-cyan-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Wallet Connected</p>
-                  <p className="text-sm text-gray-500">Ready for transactions</p>
+                  <p className="text-sm font-medium text-white">Wallet Connected</p>
+                  <p className="text-sm text-slate-400">Ready for transactions</p>
                 </div>
               </div>
 
               {/* Wallet Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm font-medium text-gray-500">Public Key</p>
+                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                  <p className="text-sm font-medium text-slate-400">Public Key</p>
                   <div className="mt-1 flex items-center gap-2">
-                    <code className="text-sm text-gray-900 break-all">
+                    <code className="text-sm text-white break-all font-mono">
                       {publicKey}
                     </code>
                     <button
                       onClick={() => handleCopy(publicKey!, 'Public key')}
-                      className="flex-shrink-0 p-1 hover:bg-gray-200 rounded"
+                      className="flex-shrink-0 p-1 hover:bg-white/10 rounded transition-colors"
                     >
-                      <ClipboardDocumentIcon className="h-4 w-4 text-gray-400" />
+                      <ClipboardDocumentIcon className="h-4 w-4 text-slate-400 hover:text-white" />
                     </button>
                   </div>
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm font-medium text-gray-500">Account Hash</p>
+                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                  <p className="text-sm font-medium text-slate-400">Account Hash</p>
                   <div className="mt-1 flex items-center gap-2">
-                    <code className="text-sm text-gray-900 break-all">
+                    <code className="text-sm text-white break-all font-mono">
                       {accountHash}
                     </code>
                     <button
                       onClick={() => handleCopy(accountHash!, 'Account hash')}
-                      className="flex-shrink-0 p-1 hover:bg-gray-200 rounded"
+                      className="flex-shrink-0 p-1 hover:bg-white/10 rounded transition-colors"
                     >
-                      <ClipboardDocumentIcon className="h-4 w-4 text-gray-400" />
+                      <ClipboardDocumentIcon className="h-4 w-4 text-slate-400 hover:text-white" />
                     </button>
                   </div>
                 </div>
               </div>
 
               {/* Balance */}
-              <div className="bg-gradient-to-r from-enterprise-primary to-casper-700 rounded-lg p-6 text-white">
-                <p className="text-sm font-medium text-white/80">Balance</p>
+              <div className="relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-red-600/20 to-red-900/10 border border-red-500/30">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-3xl -mr-16 -mt-16" />
+                <p className="text-sm font-medium text-slate-300">Balance</p>
                 <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-4xl font-bold">{balance || '0'}</span>
-                  <span className="text-lg">CSPR</span>
+                  <span className="text-4xl font-bold text-white">{balance || '0'}</span>
+                  <span className="text-lg text-slate-400">CSPR</span>
                 </div>
                 <button
                   onClick={fetchBalance}
-                  className="mt-4 flex items-center gap-2 text-sm text-white/80 hover:text-white"
+                  className="mt-4 flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
                 >
                   <ArrowPathIcon className="h-4 w-4" />
                   Refresh Balance
@@ -162,24 +165,24 @@ export function WalletPage() {
               {/* Actions */}
               <div className="flex flex-wrap gap-4">
                 {!user?.publicKey && (
-                  <button onClick={handleLinkWallet} className="btn-primary">
+                  <button onClick={handleLinkWallet} className="btn-dark-primary">
                     Link Wallet to Account
                   </button>
                 )}
-                <button onClick={disconnect} className="btn-secondary">
+                <button onClick={disconnect} className="btn-dark-secondary">
                   Disconnect Wallet
                 </button>
               </div>
             </div>
           ) : (
             <div className="text-center py-8">
-              <div className="mx-auto h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center">
-                <WalletIcon className="h-8 w-8 text-gray-400" />
+              <div className="mx-auto h-16 w-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                <WalletIcon className="h-8 w-8 text-slate-400" />
               </div>
-              <h3 className="mt-4 text-lg font-medium text-gray-900">
+              <h3 className="mt-4 text-lg font-medium text-white">
                 No Wallet Connected
               </h3>
-              <p className="mt-2 text-sm text-gray-500 max-w-md mx-auto">
+              <p className="mt-2 text-sm text-slate-400 max-w-md mx-auto">
                 Connect your Casper Wallet to sign transactions and interact with
                 the blockchain. Make sure you have the Casper Wallet extension
                 installed and unlocked.
@@ -188,7 +191,7 @@ export function WalletPage() {
                 <button
                   onClick={handleConnect}
                   disabled={isConnecting}
-                  className="btn-primary"
+                  className="btn-dark-primary"
                 >
                   {isConnecting ? (
                     <>
@@ -202,13 +205,13 @@ export function WalletPage() {
                     </>
                   )}
                 </button>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-slate-500">
                   Don't have Casper Wallet?{' '}
                   <a
                     href="https://www.casperwallet.io/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-enterprise-primary hover:underline"
+                    className="text-red-400 hover:text-red-300 transition-colors"
                   >
                     Download here →
                   </a>
@@ -220,40 +223,42 @@ export function WalletPage() {
       </div>
 
       {/* Account Linking */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="text-lg font-medium text-gray-900">Account Linking</h2>
+      <div className="glass-card">
+        <div className="glass-card-header">
+          <h2 className="text-lg font-medium text-white">Account Linking</h2>
         </div>
-        <div className="card-body">
+        <div className="glass-card-body">
           <div className="flex items-start gap-4">
             <div
-              className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                user?.publicKey ? 'bg-green-100' : 'bg-gray-100'
+              className={`h-10 w-10 rounded-full flex items-center justify-center border ${
+                user?.publicKey 
+                  ? 'bg-cyan-500/20 border-cyan-500/30' 
+                  : 'bg-white/5 border-white/10'
               }`}
             >
               {user?.publicKey ? (
-                <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                <CheckCircleIcon className="h-5 w-5 text-cyan-400" />
               ) : (
-                <XCircleIcon className="h-5 w-5 text-gray-400" />
+                <XCircleIcon className="h-5 w-5 text-slate-500" />
               )}
             </div>
             <div className="flex-1">
-              <p className="font-medium text-gray-900">
+              <p className="font-medium text-white">
                 {user?.publicKey
                   ? 'Wallet Linked to Account'
                   : 'No Wallet Linked'}
               </p>
               {user?.publicKey ? (
                 <div className="mt-1">
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-slate-400">
                     Your account is linked to:
                   </p>
-                  <code className="text-sm text-gray-700 mt-1 block">
+                  <code className="text-sm text-slate-300 font-mono mt-1 block">
                     {truncateHash(user.publicKey, 16, 12)}
                   </code>
                 </div>
               ) : (
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-slate-400 mt-1">
                   Link your Casper wallet to enable wallet-based authentication and
                   blockchain transactions directly from your account.
                 </p>
@@ -264,48 +269,52 @@ export function WalletPage() {
       </div>
 
       {/* Help Section */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="text-lg font-medium text-gray-900">Need Help?</h2>
+      <div className="glass-card">
+        <div className="glass-card-header">
+          <h2 className="text-lg font-medium text-white">Need Help?</h2>
         </div>
-        <div className="card-body">
-          <div className="prose prose-sm max-w-none text-gray-600">
-            <h4 className="font-medium text-gray-900">Getting Started</h4>
-            <ol className="list-decimal list-inside space-y-2">
-              <li>
-                Install the{' '}
-                <a
-                  href="https://www.casperwallet.io/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-enterprise-primary hover:underline"
-                >
-                  Casper Wallet
-                </a>{' '}
-                browser extension
-              </li>
-              <li>Create or import a wallet</li>
-              <li>
-                Get testnet CSPR from the{' '}
-                <a
-                  href="https://testnet.cspr.live/tools/faucet"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-enterprise-primary hover:underline"
-                >
-                  Casper Testnet Faucet
-                </a>
-              </li>
-              <li>Connect your wallet using the button above</li>
-              <li>Link your wallet to your CEWCE account</li>
-            </ol>
+        <div className="glass-card-body">
+          <div className="space-y-6">
+            <div>
+              <h4 className="font-medium text-white">Getting Started</h4>
+              <ol className="mt-3 list-decimal list-inside space-y-2 text-sm text-slate-400">
+                <li>
+                  Install the{' '}
+                  <a
+                    href="https://www.casperwallet.io/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    Casper Wallet
+                  </a>{' '}
+                  browser extension
+                </li>
+                <li>Create or import a wallet</li>
+                <li>
+                  Get testnet CSPR from the{' '}
+                  <a
+                    href="https://testnet.cspr.live/tools/faucet"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    Casper Testnet Faucet
+                  </a>
+                </li>
+                <li>Connect your wallet using the button above</li>
+                <li>Link your wallet to your CEWCE account</li>
+              </ol>
+            </div>
 
-            <h4 className="font-medium text-gray-900 mt-6">Supported Operations</h4>
-            <ul className="list-disc list-inside space-y-1">
-              <li>Create and submit workflows to the blockchain</li>
-              <li>Sign state transitions (approve, reject, escalate)</li>
-              <li>View transaction history and verify on-chain data</li>
-            </ul>
+            <div>
+              <h4 className="font-medium text-white">Supported Operations</h4>
+              <ul className="mt-3 list-disc list-inside space-y-1 text-sm text-slate-400">
+                <li>Create and submit workflows to the blockchain</li>
+                <li>Sign state transitions (approve, reject, escalate)</li>
+                <li>View transaction history and verify on-chain data</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>

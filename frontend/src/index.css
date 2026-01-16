@@ -7,6 +7,7 @@
     --color-primary: 30 64 175;
     --color-secondary: 71 85 105;
     --color-accent: 2 132 199;
+    --casper-red: 255 3 3;
   }
 
   html {
@@ -19,6 +20,11 @@
 }
 
 @layer components {
+  /* ============================================================================
+   * LUMINOUS DARK - CYBERPUNK ENTERPRISE DESIGN SYSTEM
+   * ============================================================================ */
+
+  /* === LEGACY BUTTON STYLES (Auth pages) === */
   .btn {
     @apply inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
   }
@@ -47,6 +53,48 @@
     @apply px-6 py-3 text-lg;
   }
 
+  /* === DARK THEME BUTTONS (Dashboard/Internal) === */
+  .btn-dark-primary {
+    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-lg font-medium text-white transition-all duration-200;
+    background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
+    box-shadow: 0 4px 14px -3px rgba(220, 38, 38, 0.5);
+  }
+
+  .btn-dark-primary:hover {
+    background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 6px 20px -3px rgba(220, 38, 38, 0.6);
+  }
+
+  .btn-dark-primary:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .btn-dark-secondary {
+    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-lg font-medium text-gray-300 transition-all duration-200 border border-white/20 bg-transparent;
+  }
+
+  .btn-dark-secondary:hover {
+    @apply text-white border-white/40 bg-white/5;
+  }
+
+  .btn-dark-danger {
+    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-lg font-medium text-red-400 transition-all duration-200 border border-red-500/30 bg-red-500/10;
+  }
+
+  .btn-dark-danger:hover {
+    @apply text-red-300 border-red-500/50 bg-red-500/20;
+  }
+
+  .btn-dark-success {
+    @apply inline-flex items-center justify-center px-4 py-2.5 rounded-lg font-medium text-cyan-400 transition-all duration-200 border border-cyan-500/30 bg-cyan-500/10;
+  }
+
+  .btn-dark-success:hover {
+    @apply text-cyan-300 border-cyan-500/50 bg-cyan-500/20;
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.2);
+  }
+
+  /* === LEGACY INPUT STYLES === */
   .input {
     @apply block w-full rounded-lg border-gray-300 shadow-sm focus:border-enterprise-accent focus:ring-enterprise-accent sm:text-sm;
   }
@@ -55,6 +103,28 @@
     @apply block text-sm font-medium text-gray-700 mb-1;
   }
 
+  /* === DARK THEME INPUTS (Dashboard/Internal) === */
+  .input-dark {
+    @apply w-full px-4 py-3 rounded-lg text-white placeholder-gray-500 transition-all duration-200 text-sm;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .input-dark:focus {
+    @apply outline-none;
+    border-color: rgba(220, 38, 38, 0.5);
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15), 0 0 15px rgba(220, 38, 38, 0.1);
+  }
+
+  .input-dark::placeholder {
+    color: rgba(148, 163, 184, 0.5);
+  }
+
+  .label-dark {
+    @apply block text-sm font-medium text-slate-400 mb-2;
+  }
+
+  /* === LEGACY CARD STYLES === */
   .card {
     @apply bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden;
   }
@@ -67,6 +137,31 @@
     @apply px-6 py-4;
   }
 
+  /* === GLASS PRISM CARDS (Dashboard/Internal) === */
+  .glass-card {
+    @apply rounded-xl overflow-hidden transition-all duration-200;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    /* Rim light effect: top-left brighter */
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+  }
+
+  .glass-card:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 30px rgba(220, 38, 38, 0.08);
+  }
+
+  .glass-card-header {
+    @apply px-6 py-4 border-b border-white/5;
+  }
+
+  .glass-card-body {
+    @apply px-6 py-5;
+  }
+
+  /* === BADGE STYLES === */
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
@@ -89,6 +184,116 @@
 
   .badge-neutral {
     @apply badge bg-gray-100 text-gray-800;
+  }
+
+  /* === DARK THEME BADGES === */
+  .badge-dark {
+    @apply inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium;
+  }
+
+  .badge-dark-success {
+    @apply badge-dark text-cyan-400 bg-cyan-500/10 border border-cyan-500/20;
+  }
+
+  .badge-dark-warning {
+    @apply badge-dark text-amber-400 bg-amber-500/10 border border-amber-500/20;
+  }
+
+  .badge-dark-danger {
+    @apply badge-dark text-red-400 bg-red-500/10 border border-red-500/20;
+  }
+
+  .badge-dark-info {
+    @apply badge-dark text-blue-400 bg-blue-500/10 border border-blue-500/20;
+  }
+
+  .badge-dark-neutral {
+    @apply badge-dark text-slate-400 bg-slate-500/10 border border-slate-500/20;
+  }
+
+  .badge-dark-purple {
+    @apply badge-dark text-purple-400 bg-purple-500/10 border border-purple-500/20;
+  }
+
+  /* === DARK THEME DATA TABLES === */
+  .table-dark {
+    @apply w-full text-sm;
+  }
+
+  .table-dark thead {
+    @apply text-left;
+  }
+
+  .table-dark thead th {
+    @apply px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-white/5;
+  }
+
+  .table-dark tbody tr {
+    @apply border-b border-white/5 transition-colors;
+  }
+
+  .table-dark tbody tr:hover {
+    @apply bg-white/[0.02];
+  }
+
+  .table-dark tbody td {
+    @apply px-6 py-4 text-slate-300;
+  }
+
+  /* === GLASSMORPHISM INPUT STYLES (Auth pages) === */
+  .glass-input {
+    @apply w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 transition-all duration-300;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .glass-input:focus {
+    @apply outline-none;
+    border-color: rgba(220, 38, 38, 0.6);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2), 0 0 20px rgba(220, 38, 38, 0.15);
+  }
+
+  .glass-input::placeholder {
+    color: rgba(156, 163, 175, 0.6);
+  }
+
+  /* === STAT CARD (Dashboard) === */
+  .stat-card {
+    @apply glass-card p-5;
+  }
+
+  .stat-card-icon {
+    @apply w-12 h-12 rounded-lg flex items-center justify-center;
+  }
+
+  .stat-card-icon-blue {
+    @apply stat-card-icon bg-blue-500/20 text-blue-400;
+  }
+
+  .stat-card-icon-yellow {
+    @apply stat-card-icon bg-amber-500/20 text-amber-400;
+  }
+
+  .stat-card-icon-green {
+    @apply stat-card-icon bg-cyan-500/20 text-cyan-400;
+  }
+
+  .stat-card-icon-red {
+    @apply stat-card-icon bg-red-500/20 text-red-400;
+  }
+
+  /* === SIDEBAR NAVIGATION (Glass Rail) === */
+  .sidebar-nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200;
+  }
+
+  .sidebar-nav-item-inactive {
+    @apply sidebar-nav-item text-slate-400 hover:text-white hover:bg-white/5;
+  }
+
+  .sidebar-nav-item-active {
+    @apply sidebar-nav-item text-white border-l-4 border-red-500 bg-red-500/10 -ml-px pl-[11px];
+    box-shadow: inset 4px 0 12px -4px rgba(220, 38, 38, 0.4);
   }
 }
 
@@ -126,9 +331,47 @@
       transform: translateX(0);
     }
   }
+
+  /* Static grid pattern for internal pages */
+  .bg-grid-pattern {
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* Noise overlay utility */
+  .noise-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 0;
+  }
 }
 
-/* Scrollbar styling */
+/* === DARK THEME SCROLLBAR === */
+.dark-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.dark-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.dark-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.dark-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Legacy light scrollbar (Auth pages) */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

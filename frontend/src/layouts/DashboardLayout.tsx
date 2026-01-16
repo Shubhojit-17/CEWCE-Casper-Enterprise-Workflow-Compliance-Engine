@@ -1,5 +1,5 @@
 // =============================================================================
-// Dashboard Layout
+// Dashboard Layout - Luminous Dark Cyberpunk Enterprise Theme
 // =============================================================================
 
 import { Fragment, useState } from 'react';
@@ -65,8 +65,45 @@ export function DashboardLayout() {
     navigate('/');
   };
 
+  // Check if current path matches nav item (including sub-paths)
+  const isActivePath = (href: string) => {
+    if (href === '/app/dashboard') {
+      return location.pathname === href;
+    }
+    return location.pathname.startsWith(href);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#0A0A0B] relative">
+      {/* Atmospheric Background */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        {/* Static grid pattern */}
+        <div className="absolute inset-0 bg-grid-pattern opacity-100" />
+        
+        {/* Atmospheric blobs - reduced opacity from Hero */}
+        <div
+          className="absolute w-[800px] h-[800px] rounded-full"
+          style={{
+            background: 'radial-gradient(circle, rgba(139, 0, 0, 0.15) 0%, transparent 70%)',
+            filter: 'blur(120px)',
+            top: '-20%',
+            right: '-10%',
+          }}
+        />
+        <div
+          className="absolute w-[600px] h-[600px] rounded-full"
+          style={{
+            background: 'radial-gradient(circle, rgba(30, 41, 59, 0.2) 0%, transparent 70%)',
+            filter: 'blur(100px)',
+            bottom: '-10%',
+            left: '-5%',
+          }}
+        />
+        
+        {/* Noise overlay */}
+        <div className="absolute inset-0 noise-overlay" />
+      </div>
+
       {/* Mobile sidebar */}
       <Transition.Root show={sidebarOpen} as={Fragment}>
         <Dialog as="div" className="relative z-50 lg:hidden" onClose={setSidebarOpen}>
@@ -79,7 +116,7 @@ export function DashboardLayout() {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-gray-900/80" />
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
           </Transition.Child>
 
           <div className="fixed inset-0 flex">
@@ -114,9 +151,10 @@ export function DashboardLayout() {
                   </div>
                 </Transition.Child>
 
-                <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-enterprise-primary px-6 pb-4">
+                {/* Mobile Sidebar Content - Glass Rail */}
+                <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white/5 backdrop-blur-xl border-r border-white/10 px-6 pb-4 dark-scrollbar">
                   <div className="flex h-16 shrink-0 items-center">
-                    <span className="text-xl font-bold text-white">CEWCE</span>
+                    <span className="text-xl font-bold text-white tracking-wide">CEWCE</span>
                   </div>
                   <nav className="flex flex-1 flex-col">
                     <ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -128,26 +166,42 @@ export function DashboardLayout() {
                                 to={item.href}
                                 onClick={() => setSidebarOpen(false)}
                                 className={cn(
-                                  location.pathname === item.href
-                                    ? 'bg-white/10 text-white'
-                                    : 'text-white/70 hover:text-white hover:bg-white/10',
-                                  'group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold'
+                                  isActivePath(item.href)
+                                    ? 'sidebar-nav-item-active'
+                                    : 'sidebar-nav-item-inactive'
                                 )}
                               >
-                                <item.icon
-                                  className={cn(
-                                    location.pathname === item.href
-                                      ? 'text-white'
-                                      : 'text-white/70 group-hover:text-white',
-                                    'h-6 w-6 shrink-0'
-                                  )}
-                                  aria-hidden="true"
-                                />
+                                <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
                                 {item.name}
                               </Link>
                             </li>
                           ))}
                         </ul>
+                      </li>
+
+                      {/* Wallet Status - Mobile */}
+                      <li className="mt-auto">
+                        <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Wallet</p>
+                          {isConnected ? (
+                            <>
+                              <p className="mt-2 text-sm font-mono text-white">
+                                {truncateHash(publicKey || '')}
+                              </p>
+                              <p className="text-xs text-slate-400 mt-1">
+                                {balance !== null ? `${balance} CSPR` : 'Loading...'}
+                              </p>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => connect()}
+                              disabled={isConnecting}
+                              className="mt-2 w-full btn-dark-secondary text-sm"
+                            >
+                              {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+                            </button>
+                          )}
+                        </div>
                       </li>
                     </ul>
                   </nav>
@@ -158,36 +212,31 @@ export function DashboardLayout() {
         </Dialog>
       </Transition.Root>
 
-      {/* Static sidebar for desktop */}
+      {/* Static sidebar for desktop - Glass Rail */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-        <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-enterprise-primary px-6 pb-4">
+        <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white/5 backdrop-blur-xl border-r border-white/10 px-6 pb-4 dark-scrollbar">
+          {/* Logo */}
           <div className="flex h-16 shrink-0 items-center">
-            <span className="text-xl font-bold text-white">CEWCE</span>
+            <span className="text-xl font-bold text-white tracking-wide">CEWCE</span>
+            <span className="ml-2 text-xs text-slate-500 font-mono">v1.0</span>
           </div>
+          
           <nav className="flex flex-1 flex-col">
             <ul role="list" className="flex flex-1 flex-col gap-y-7">
               <li>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Navigation</p>
                 <ul role="list" className="-mx-2 space-y-1">
                   {navigation.map((item) => (
                     <li key={item.name}>
                       <Link
                         to={item.href}
                         className={cn(
-                          location.pathname === item.href
-                            ? 'bg-white/10 text-white'
-                            : 'text-white/70 hover:text-white hover:bg-white/10',
-                          'group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold'
+                          isActivePath(item.href)
+                            ? 'sidebar-nav-item-active'
+                            : 'sidebar-nav-item-inactive'
                         )}
                       >
-                        <item.icon
-                          className={cn(
-                            location.pathname === item.href
-                              ? 'text-white'
-                              : 'text-white/70 group-hover:text-white',
-                            'h-6 w-6 shrink-0'
-                          )}
-                          aria-hidden="true"
-                        />
+                        <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
                         {item.name}
                       </Link>
                     </li>
@@ -197,23 +246,27 @@ export function DashboardLayout() {
 
               {/* Wallet Status */}
               <li className="mt-auto">
-                <div className="rounded-lg bg-white/10 p-4">
-                  <p className="text-xs font-medium text-white/60">Wallet Status</p>
+                <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Wallet Status</p>
                   {isConnected ? (
                     <>
-                      <p className="mt-1 text-sm font-mono text-white">
+                      <div className="mt-3 flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
+                        <span className="text-xs text-cyan-400">Connected</span>
+                      </div>
+                      <p className="mt-2 text-sm font-mono text-white truncate">
                         {truncateHash(publicKey || '')}
                       </p>
-                      <p className="text-xs text-white/60">
+                      <p className="text-xs text-slate-400 mt-1">
                         {balance !== null ? `${balance} CSPR` : 'Loading balance...'}
                       </p>
                     </>
                   ) : (
-                    <div className="mt-2">
+                    <div className="mt-3">
                       <button
                         onClick={() => connect()}
                         disabled={isConnecting}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-white bg-white/20 hover:bg-white/30 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium text-white bg-white/10 hover:bg-white/15 border border-white/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isConnecting ? (
                           <>
@@ -240,12 +293,12 @@ export function DashboardLayout() {
       </div>
 
       {/* Main content area */}
-      <div className="lg:pl-72">
+      <div className="lg:pl-72 relative z-10">
         {/* Top bar */}
-        <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+        <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-white/10 bg-[#0A0A0B]/80 backdrop-blur-xl px-4 sm:gap-x-6 sm:px-6 lg:px-8">
           <button
             type="button"
-            className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
+            className="-m-2.5 p-2.5 text-slate-400 lg:hidden hover:text-white transition-colors"
             onClick={() => setSidebarOpen(true)}
           >
             <span className="sr-only">Open sidebar</span>
@@ -253,7 +306,7 @@ export function DashboardLayout() {
           </button>
 
           {/* Separator */}
-          <div className="h-6 w-px bg-gray-200 lg:hidden" aria-hidden="true" />
+          <div className="h-6 w-px bg-white/10 lg:hidden" aria-hidden="true" />
 
           <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
             <div className="flex flex-1 items-center">
@@ -263,23 +316,25 @@ export function DashboardLayout() {
             <div className="flex items-center gap-x-4 lg:gap-x-6">
               {/* Network indicator */}
               <div className="hidden sm:flex items-center gap-x-2 text-sm">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
-                <span className="text-gray-600">Casper Testnet</span>
+                <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
+                <span className="text-slate-400">Casper Testnet</span>
               </div>
 
               {/* Separator */}
-              <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-gray-200" aria-hidden="true" />
+              <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-white/10" aria-hidden="true" />
 
               {/* Profile dropdown */}
               <Menu as="div" className="relative">
-                <Menu.Button className="-m-1.5 flex items-center p-1.5">
+                <Menu.Button className="-m-1.5 flex items-center p-1.5 hover:bg-white/5 rounded-lg transition-colors">
                   <span className="sr-only">Open user menu</span>
-                  <UserCircleIcon className="h-8 w-8 text-gray-400" />
+                  <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center">
+                    <UserCircleIcon className="h-6 w-6 text-slate-400" />
+                  </div>
                   <span className="hidden lg:flex lg:items-center">
-                    <span className="ml-4 text-sm font-semibold leading-6 text-gray-900" aria-hidden="true">
+                    <span className="ml-4 text-sm font-medium leading-6 text-white" aria-hidden="true">
                       {user?.firstName || user?.email}
                     </span>
-                    <ChevronDownIcon className="ml-2 h-5 w-5 text-gray-400" aria-hidden="true" />
+                    <ChevronDownIcon className="ml-2 h-5 w-5 text-slate-400" aria-hidden="true" />
                   </span>
                 </Menu.Button>
                 <Transition
@@ -291,17 +346,17 @@ export function DashboardLayout() {
                   leaveFrom="transform opacity-100 scale-100"
                   leaveTo="transform opacity-0 scale-95"
                 >
-                  <Menu.Items className="absolute right-0 z-10 mt-2.5 w-48 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none">
+                  <Menu.Items className="absolute right-0 z-10 mt-2.5 w-48 origin-top-right rounded-xl bg-[#1a1a1b] border border-white/10 py-2 shadow-xl focus:outline-none">
                     <Menu.Item>
                       {({ active }) => (
                         <Link
                           to="/app/settings"
                           className={cn(
-                            active ? 'bg-gray-50' : '',
-                            'block px-3 py-1 text-sm leading-6 text-gray-900'
+                            active ? 'bg-white/5' : '',
+                            'flex items-center px-3 py-2 text-sm text-slate-300 transition-colors'
                           )}
                         >
-                          <Cog6ToothIcon className="inline h-5 w-5 mr-2 text-gray-400" />
+                          <Cog6ToothIcon className="h-5 w-5 mr-3 text-slate-500" />
                           Settings
                         </Link>
                       )}
@@ -311,11 +366,11 @@ export function DashboardLayout() {
                         <button
                           onClick={handleLogout}
                           className={cn(
-                            active ? 'bg-gray-50' : '',
-                            'block w-full text-left px-3 py-1 text-sm leading-6 text-gray-900'
+                            active ? 'bg-white/5' : '',
+                            'flex items-center w-full text-left px-3 py-2 text-sm text-slate-300 transition-colors'
                           )}
                         >
-                          <ArrowRightOnRectangleIcon className="inline h-5 w-5 mr-2 text-gray-400" />
+                          <ArrowRightOnRectangleIcon className="h-5 w-5 mr-3 text-slate-500" />
                           Sign out
                         </button>
                       )}
@@ -328,7 +383,7 @@ export function DashboardLayout() {
         </div>
 
         {/* Page content */}
-        <main className="py-10">
+        <main className="py-8">
           <div className="px-4 sm:px-6 lg:px-8">
             <Outlet />
           </div>

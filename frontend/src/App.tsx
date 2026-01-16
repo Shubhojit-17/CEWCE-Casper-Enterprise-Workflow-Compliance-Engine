@@ -5,13 +5,13 @@ import { useWalletStore } from './stores/wallet';
 
 // Layouts
 import { DashboardLayout } from './layouts/DashboardLayout';
-import { AuthLayout } from './layouts/AuthLayout';
 
-// Pages
-import { LoginPage } from './pages/auth/LoginPage';
-import { RegisterPage } from './pages/auth/RegisterPage';
+// Pages - Auth (New Glassmorphism Design)
+import { GlassAuthPage } from './pages/auth/GlassAuthPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
+
+// Pages - Dashboard
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { WorkflowsPage } from './pages/workflows/WorkflowsPage';
 import { WorkflowDetailPage } from './pages/workflows/WorkflowDetailPage';
@@ -86,20 +86,25 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Routes */}
+        {/* Auth Routes - New Glassmorphism Design */}
         <Route
-          path="/auth"
+          path="/auth/login"
           element={
             <PublicRoute>
-              <AuthLayout />
+              <GlassAuthPage />
             </PublicRoute>
           }
-        >
-          <Route path="login" element={<LoginPage />} />
-          <Route path="register" element={<RegisterPage />} />
-          <Route path="forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="reset-password" element={<ResetPasswordPage />} />
-        </Route>
+        />
+        <Route
+          path="/auth/register"
+          element={
+            <PublicRoute>
+              <GlassAuthPage />
+            </PublicRoute>
+          }
+        />
+        <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
 
         {/* Public Verification Page (no auth required) */}
         <Route path="/verify" element={<VerifyCompliancePage />} />

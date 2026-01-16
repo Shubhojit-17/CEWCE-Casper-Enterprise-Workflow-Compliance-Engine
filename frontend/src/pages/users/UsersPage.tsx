@@ -1,5 +1,5 @@
 // =============================================================================
-// Users Management Page (Admin Only)
+// Users Management Page (Admin Only) - Luminous Dark Cyberpunk Enterprise Theme
 // =============================================================================
 
 import { useState, Fragment } from 'react';
@@ -112,35 +112,35 @@ export function UsersPage() {
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'ADMIN':
-        return 'bg-red-100 text-red-800';
+        return 'badge-dark-danger';
       case 'MANAGER':
-        return 'bg-purple-100 text-purple-800';
+        return 'badge-dark-purple';
       case 'APPROVER':
-        return 'bg-blue-100 text-blue-800';
+        return 'badge-dark-info';
       case 'USER':
-        return 'bg-green-100 text-green-800';
+        return 'badge-dark-success';
       case 'VIEWER':
-        return 'bg-gray-100 text-gray-800';
+        return 'badge-dark-neutral';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'badge-dark-neutral';
     }
   };
 
   // Check if current user is admin
   if (!currentUser?.roles?.includes('ADMIN')) {
     return (
-      <div className="card p-8 text-center">
+      <div className="glass-card p-8 text-center">
         <ShieldCheckIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
-        <h2 className="text-xl font-medium text-gray-900 mb-2">Access Denied</h2>
-        <p className="text-gray-500">You need ADMIN privileges to access user management.</p>
+        <h2 className="text-xl font-medium text-white mb-2">Access Denied</h2>
+        <p className="text-slate-400">You need ADMIN privileges to access user management.</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="card p-8 text-center">
-        <p className="text-red-500">Failed to load users. Please try again.</p>
+      <div className="glass-card p-8 text-center">
+        <p className="text-red-400">Failed to load users. Please try again.</p>
       </div>
     );
   }
@@ -150,26 +150,26 @@ export function UsersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-white">User Management</h1>
+          <p className="mt-1 text-sm text-slate-400">
             Manage user accounts and assign roles
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-sm text-slate-400">
           <UserGroupIcon className="h-5 w-5" />
           {data?.pagination?.total || 0} users
         </div>
       </div>
 
       {/* Search */}
-      <div className="card">
-        <div className="card-body">
+      <div className="glass-card">
+        <div className="glass-card-body">
           <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
             <input
               type="text"
               placeholder="Search by email, name, or public key..."
-              className="input pl-10"
+              className="input-dark pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -178,78 +178,66 @@ export function UsersPage() {
       </div>
 
       {/* Users Table */}
-      <div className="card">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+      <div className="glass-card overflow-hidden">
+        <div className="overflow-x-auto dark-scrollbar">
+          <table className="table-dark">
+            <thead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Public Key
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Roles
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Joined
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th>User</th>
+                <th>Public Key</th>
+                <th>Roles</th>
+                <th>Joined</th>
+                <th className="text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody>
               {isLoading ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-8 text-center">
                     <div className="animate-pulse flex justify-center">
-                      <div className="h-6 w-32 bg-gray-200 rounded"></div>
+                      <div className="h-6 w-32 bg-white/10 rounded"></div>
                     </div>
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
                     No users found
                   </td>
                 </tr>
               ) : (
                 filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={user.id}>
+                    <td>
                       <div>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-white">
                           {user.displayName || 'No name'}
                         </p>
-                        <p className="text-sm text-gray-500">{user.email || 'No email'}</p>
+                        <p className="text-sm text-slate-500">{user.email || 'No email'}</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td>
                       {user.publicKey ? (
-                        <span className="text-sm font-mono text-gray-600">
+                        <span className="text-sm font-mono text-slate-400">
                           {truncateHash(user.publicKey, 8, 6)}
                         </span>
                       ) : (
-                        <span className="text-sm text-gray-400">Not linked</span>
+                        <span className="text-sm text-slate-600">Not linked</span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td>
                       <div className="flex flex-wrap gap-1">
                         {user.roles.length > 0 ? (
                           user.roles.map((role) => (
                             <span
                               key={role}
-                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getRoleBadgeColor(
-                                role
-                              )}`}
+                              className={getRoleBadgeColor(role)}
                             >
                               {role}
                               {user.id !== currentUser?.id || role !== 'ADMIN' ? (
                                 <button
                                   onClick={() => handleRemoveRole(user, role)}
-                                  className="ml-1 hover:text-red-600"
+                                  className="ml-1 hover:text-red-400"
                                   title="Remove role"
                                 >
                                   ×
@@ -258,17 +246,17 @@ export function UsersPage() {
                             </span>
                           ))
                         ) : (
-                          <span className="text-sm text-gray-400">No roles</span>
+                          <span className="text-sm text-slate-600">No roles</span>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="text-slate-400">
                       {formatDate(user.createdAt)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <td className="text-right">
                       <button
                         onClick={() => openRoleModal(user)}
-                        className="text-enterprise-primary hover:text-enterprise-dark"
+                        className="text-red-400 hover:text-red-300 transition-colors"
                         title="Add role"
                       >
                         <PlusIcon className="h-5 w-5" />
@@ -283,41 +271,41 @@ export function UsersPage() {
       </div>
 
       {/* Role Legend */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="text-lg font-medium text-gray-900">Role Descriptions</h2>
+      <div className="glass-card">
+        <div className="glass-card-header">
+          <h2 className="text-lg font-medium text-white">Role Descriptions</h2>
         </div>
-        <div className="card-body">
+        <div className="glass-card-body">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="flex items-start gap-3">
-              <span className={`px-2 py-1 rounded text-xs font-medium ${getRoleBadgeColor('ADMIN')}`}>
+              <span className={getRoleBadgeColor('ADMIN')}>
                 ADMIN
               </span>
-              <p className="text-sm text-gray-600">Full system access, user management</p>
+              <p className="text-sm text-slate-400">Full system access, user management</p>
             </div>
             <div className="flex items-start gap-3">
-              <span className={`px-2 py-1 rounded text-xs font-medium ${getRoleBadgeColor('MANAGER')}`}>
+              <span className={getRoleBadgeColor('MANAGER')}>
                 MANAGER
               </span>
-              <p className="text-sm text-gray-600">Create templates, manage workflows</p>
+              <p className="text-sm text-slate-400">Create templates, manage workflows</p>
             </div>
             <div className="flex items-start gap-3">
-              <span className={`px-2 py-1 rounded text-xs font-medium ${getRoleBadgeColor('APPROVER')}`}>
+              <span className={getRoleBadgeColor('APPROVER')}>
                 APPROVER
               </span>
-              <p className="text-sm text-gray-600">Approve/reject workflow transitions</p>
+              <p className="text-sm text-slate-400">Approve/reject workflow transitions</p>
             </div>
             <div className="flex items-start gap-3">
-              <span className={`px-2 py-1 rounded text-xs font-medium ${getRoleBadgeColor('USER')}`}>
+              <span className={getRoleBadgeColor('USER')}>
                 USER
               </span>
-              <p className="text-sm text-gray-600">Create and submit workflows</p>
+              <p className="text-sm text-slate-400">Create and submit workflows</p>
             </div>
             <div className="flex items-start gap-3">
-              <span className={`px-2 py-1 rounded text-xs font-medium ${getRoleBadgeColor('VIEWER')}`}>
+              <span className={getRoleBadgeColor('VIEWER')}>
                 VIEWER
               </span>
-              <p className="text-sm text-gray-600">View-only access to workflows</p>
+              <p className="text-sm text-slate-400">View-only access to workflows</p>
             </div>
           </div>
         </div>
@@ -339,7 +327,7 @@ export function UsersPage() {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-black bg-opacity-25" />
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
           </Transition.Child>
 
           <div className="fixed inset-0 overflow-y-auto">
@@ -353,45 +341,45 @@ export function UsersPage() {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-[#1a1a1b] border border-white/10 p-6 shadow-xl transition-all">
                   <Dialog.Title
                     as="h3"
-                    className="text-lg font-medium text-gray-900"
+                    className="text-lg font-medium text-white"
                   >
                     Assign Role
                   </Dialog.Title>
 
                   {selectedUser && (
                     <div className="mt-4">
-                      <p className="text-sm text-gray-500 mb-4">
+                      <p className="text-sm text-slate-400 mb-4">
                         Assign a role to{' '}
-                        <span className="font-medium text-gray-900">
+                        <span className="font-medium text-white">
                           {selectedUser.email || selectedUser.displayName || 'this user'}
                         </span>
                       </p>
 
                       <div className="mb-4">
-                        <label className="label">Current Roles</label>
-                        <div className="flex flex-wrap gap-1">
+                        <label className="label-dark">Current Roles</label>
+                        <div className="flex flex-wrap gap-1 mt-1">
                           {selectedUser.roles.length > 0 ? (
                             selectedUser.roles.map((role) => (
                               <span
                                 key={role}
-                                className={`px-2 py-1 rounded text-xs font-medium ${getRoleBadgeColor(role)}`}
+                                className={getRoleBadgeColor(role)}
                               >
                                 {role}
                               </span>
                             ))
                           ) : (
-                            <span className="text-sm text-gray-400">No roles assigned</span>
+                            <span className="text-sm text-slate-500">No roles assigned</span>
                           )}
                         </div>
                       </div>
 
                       <div className="mb-4">
-                        <label className="label">Select Role to Add</label>
+                        <label className="label-dark">Select Role to Add</label>
                         <select
-                          className="input"
+                          className="input-dark mt-1"
                           value={selectedRole}
                           onChange={(e) => setSelectedRole(e.target.value)}
                         >
@@ -409,14 +397,14 @@ export function UsersPage() {
                       <div className="flex gap-3">
                         <button
                           type="button"
-                          className="btn-secondary flex-1"
+                          className="btn-dark-secondary flex-1"
                           onClick={() => setIsRoleModalOpen(false)}
                         >
                           Cancel
                         </button>
                         <button
                           type="button"
-                          className="btn-primary flex-1"
+                          className="btn-dark-primary flex-1"
                           onClick={handleAssignRole}
                           disabled={!selectedRole || assignRoleMutation.isPending}
                         >

@@ -1,5 +1,5 @@
 // =============================================================================
-// Audit Log Page
+// Audit Log Page - Luminous Dark Cyberpunk Enterprise Theme
 // =============================================================================
 
 import { useState } from 'react';
@@ -109,11 +109,8 @@ export function AuditLogPage() {
     'template.publish',
   ];
 
-  const getActionColor = (action: string) => {
-    if (action.startsWith('user.')) return 'bg-blue-100 text-blue-800';
-    if (action.startsWith('workflow.')) return 'bg-green-100 text-green-800';
-    if (action.startsWith('template.')) return 'bg-purple-100 text-purple-800';
-    return 'bg-gray-100 text-gray-800';
+  const getActionColor = () => {
+    return 'badge-dark-info';
   };
 
   return (
@@ -121,8 +118,8 @@ export function AuditLogPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Audit Log</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-white">Audit Log</h1>
+          <p className="mt-1 text-sm text-slate-400">
             Complete history of all actions in the system
           </p>
         </div>
@@ -147,7 +144,7 @@ export function AuditLogPage() {
               toast.error('Failed to export audit log. You may need admin access.');
             }
           }}
-          className="btn-secondary flex items-center gap-2"
+          className="btn-dark-secondary flex items-center gap-2"
         >
           <ArrowDownTrayIcon className="h-5 w-5" />
           Export CSV
@@ -155,30 +152,30 @@ export function AuditLogPage() {
       </div>
 
       {/* Filters */}
-      <div className="card">
-        <div className="card-body">
+      <div className="glass-card">
+        <div className="glass-card-body">
           <div className="flex flex-col sm:flex-row gap-4">
             {/* Search */}
             <form onSubmit={handleSearch} className="flex-1">
               <div className="relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
                 <input
                   type="text"
                   placeholder="Search by user, resource, or deploy hash..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="input pl-10"
+                  className="input-dark pl-10"
                 />
               </div>
             </form>
 
             {/* Action Filter */}
             <div className="flex items-center gap-2">
-              <FunnelIcon className="h-5 w-5 text-gray-400" />
+              <FunnelIcon className="h-5 w-5 text-slate-500" />
               <select
                 value={action}
                 onChange={(e) => handleActionFilter(e.target.value)}
-                className="input w-48"
+                className="input-dark w-48"
               >
                 {actions.map((a) => (
                   <option key={a} value={a}>
@@ -192,78 +189,62 @@ export function AuditLogPage() {
       </div>
 
       {/* Audit Log Table */}
-      <div className="card">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+      <div className="glass-card overflow-hidden">
+        <div className="overflow-x-auto dark-scrollbar">
+          <table className="table-dark">
+            <thead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Timestamp
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Transition
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Workflow
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Deploy Hash
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Comment
-                </th>
+                <th>Timestamp</th>
+                <th>Transition</th>
+                <th>User</th>
+                <th>Workflow</th>
+                <th>Deploy Hash</th>
+                <th>Comment</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody>
               {isLoading ? (
                 Array.from({ length: 10 }).map((_, i) => (
                   <tr key={i}>
-                    <td className="px-6 py-4">
-                      <div className="animate-pulse h-4 bg-gray-200 rounded w-32" />
+                    <td>
+                      <div className="animate-pulse h-4 bg-white/10 rounded w-32" />
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="animate-pulse h-6 bg-gray-200 rounded w-24" />
+                    <td>
+                      <div className="animate-pulse h-6 bg-white/10 rounded w-24" />
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="animate-pulse h-4 bg-gray-200 rounded w-20" />
+                    <td>
+                      <div className="animate-pulse h-4 bg-white/10 rounded w-20" />
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="animate-pulse h-4 bg-gray-200 rounded w-28" />
+                    <td>
+                      <div className="animate-pulse h-4 bg-white/10 rounded w-28" />
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="animate-pulse h-4 bg-gray-200 rounded w-24" />
+                    <td>
+                      <div className="animate-pulse h-4 bg-white/10 rounded w-24" />
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="animate-pulse h-4 bg-gray-200 rounded w-24" />
+                    <td>
+                      <div className="animate-pulse h-4 bg-white/10 rounded w-24" />
                     </td>
                   </tr>
                 ))
               ) : data?.entries && data.entries.length > 0 ? (
                 data.entries.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <tr key={log.id}>
+                    <td className="text-slate-400">
                       {formatDateTime(log.createdAt)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getActionColor(
-                          `state.${log.fromState}_${log.toState}`
-                        )}`}
-                      >
+                    <td>
+                      <span className={getActionColor()}>
                         State {log.fromState} → {log.toState}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="text-white">
                       {log.actor?.displayName || log.actor?.publicKey?.slice(0, 12) || 'System'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {log.templateName}
-                      <span className="text-gray-400 ml-1">/ {log.instanceTitle}</span>
+                    <td>
+                      <span className="text-white">{log.templateName}</span>
+                      <span className="text-slate-500 ml-1">/ {log.instanceTitle}</span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td>
                       {log.deployHash ? (
                         <div className="flex items-center gap-2">
                           <button
@@ -271,7 +252,7 @@ export function AuditLogPage() {
                               copyToClipboard(log.deployHash!);
                               toast.success('Deploy hash copied');
                             }}
-                            className="text-sm font-mono text-gray-500 hover:text-enterprise-primary"
+                            className="text-sm font-mono text-slate-400 hover:text-white transition-colors"
                           >
                             {truncateHash(log.deployHash)}
                           </button>
@@ -279,23 +260,23 @@ export function AuditLogPage() {
                             href={`https://testnet.cspr.live/deploy/${log.deployHash}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-gray-400 hover:text-enterprise-primary"
+                            className="text-slate-500 hover:text-red-400 transition-colors"
                           >
                             <ArrowTopRightOnSquareIcon className="h-4 w-4" />
                           </a>
                         </div>
                       ) : (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-slate-600">—</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {log.comment || <span className="text-gray-400">—</span>}
+                    <td className="text-slate-400">
+                      {log.comment || <span className="text-slate-600">—</span>}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
                     No audit logs found
                   </td>
                 </tr>
@@ -306,8 +287,8 @@ export function AuditLogPage() {
 
         {/* Pagination */}
         {data?.pagination && data.pagination.totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-            <div className="text-sm text-gray-500">
+          <div className="px-6 py-4 border-t border-white/5 flex items-center justify-between">
+            <div className="text-sm text-slate-500">
               Showing {(page - 1) * 20 + 1} to{' '}
               {Math.min(page * 20, data.pagination.total)} of{' '}
               {data.pagination.total} results
@@ -316,14 +297,14 @@ export function AuditLogPage() {
               <button
                 onClick={() => handlePageChange(page - 1)}
                 disabled={page === 1}
-                className="btn-secondary btn-sm"
+                className="btn-dark-secondary text-sm"
               >
                 Previous
               </button>
               <button
                 onClick={() => handlePageChange(page + 1)}
                 disabled={page >= data.pagination.totalPages}
-                className="btn-secondary btn-sm"
+                className="btn-dark-secondary text-sm"
               >
                 Next
               </button>
@@ -333,15 +314,17 @@ export function AuditLogPage() {
       </div>
 
       {/* Blockchain Integrity Note */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="text-sm font-medium text-blue-800">
-          Blockchain-Verified Audit Trail
-        </h3>
-        <p className="mt-1 text-sm text-blue-600">
-          All workflow state transitions are cryptographically recorded on the Casper
-          blockchain, providing an immutable audit trail. Click on any deploy hash to
-          verify the transaction on the block explorer.
-        </p>
+      <div className="glass-card border-cyan-500/30">
+        <div className="glass-card-body">
+          <h3 className="text-sm font-medium text-cyan-400">
+            Blockchain-Verified Audit Trail
+          </h3>
+          <p className="mt-1 text-sm text-slate-400">
+            All workflow state transitions are cryptographically recorded on the Casper
+            blockchain, providing an immutable audit trail. Click on any deploy hash to
+            verify the transaction on the block explorer.
+          </p>
+        </div>
       </div>
     </div>
   );

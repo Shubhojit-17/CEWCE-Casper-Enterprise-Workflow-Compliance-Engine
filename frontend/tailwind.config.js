@@ -35,6 +35,20 @@ export default {
         sans: ['Inter var', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
+      boxShadow: {
+        'glow-red': '0 0 20px rgba(220, 38, 38, 0.5)',
+        'glow-red-lg': '0 0 40px rgba(220, 38, 38, 0.6)',
+        'glass': '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 20px 40px -10px rgba(255, 50, 50, 0.2)',
+      },
+      animation: {
+        'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
+      },
+      keyframes: {
+        'glow-pulse': {
+          '0%, 100%': { boxShadow: '0 0 20px rgba(220, 38, 38, 0.5)' },
+          '50%': { boxShadow: '0 0 30px rgba(220, 38, 38, 0.7)' },
+        },
+      },
     },
   },
   plugins: [],

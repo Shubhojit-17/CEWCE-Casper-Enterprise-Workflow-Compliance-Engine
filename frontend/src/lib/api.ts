@@ -33,19 +33,37 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response) {
-      const { status, data } = error.response;
+      const { status, data, config } = error.response;
+      const requestUrl = config?.url || '';
+      
+      // Check if this is an auth endpoint (login, register, etc.)
+      const isAuthEndpoint = requestUrl.includes('/auth/login') || 
+                             requestUrl.includes('/auth/register') ||
+                             requestUrl.includes('/auth/nonce') ||
+                             requestUrl.includes('/auth/verify');
 
       switch (status) {
         case 401:
-          // Unauthorized - clear auth and redirect to landing
-          localStorage.removeItem('cewce-auth');
-          window.location.href = '/';
+          if (isAuthEndpoint) {
+            // For login/auth attempts, show the error message without redirecting
+            const errorMessage = data?.error?.message || data?.message || 'Invalid email or password';
+            toast.error(errorMessage);
+          } else {
+            // For other 401s (session expired), clear auth and redirect
+            localStorage.removeItem('cewce-auth');
+            toast.error('Session expired. Please log in again.');
+            window.location.href = '/auth/login';
+          }
           break;
         case 403:
           toast.error('Access denied. You do not have permission.');
           break;
         case 404:
-          toast.error('Resource not found.');
+          if (isAuthEndpoint) {
+            toast.error('User not found. Please check your email address.');
+          } else {
+            toast.error('Resource not found.');
+          }
           break;
         case 422:
           // Validation error
@@ -53,6 +71,8 @@ api.interceptors.response.use(
             data.errors.forEach((err: { message: string }) => {
               toast.error(err.message);
             });
+          } else if (data?.error?.message) {
+            toast.error(data.error.message);
           } else {
             toast.error(data.message || 'Validation error');
           }
@@ -64,7 +84,8 @@ api.interceptors.response.use(
           toast.error('Server error. Please try again later.');
           break;
         default:
-          toast.error(data.message || 'An error occurred');
+          const defaultMessage = data?.error?.message || data?.message || 'An error occurred';
+          toast.error(defaultMessage);
       }
     } else if (error.request) {
       toast.error('Network error. Please check your connection.');

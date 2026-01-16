@@ -1,5 +1,5 @@
 // =============================================================================
-// Workflow Detail Page
+// Workflow Detail Page - Luminous Dark Cyberpunk Enterprise Theme
 // =============================================================================
 
 import { useState, useRef } from 'react';
@@ -27,13 +27,46 @@ import {
   formatDateTime,
   formatRelativeTime,
   getStateName,
-  getStateColor,
-  getStatusColor,
   truncateHash,
   copyToClipboard,
 } from '../../lib/utils';
 import { useWalletStore } from '../../stores/wallet';
 import type { WorkflowInstance } from '../../types';
+
+// Dark theme state and status color functions
+const getDarkStateColor = (state: number): string => {
+  const colors: Record<number, string> = {
+    0: 'bg-slate-500/20 text-slate-300', // Draft
+    1: 'bg-amber-500/20 text-amber-400', // Pending Review
+    10: 'bg-cyan-500/20 text-cyan-400',  // Approved
+    11: 'bg-red-500/20 text-red-400',    // Rejected
+    20: 'bg-purple-500/20 text-purple-400', // Escalated
+    30: 'bg-slate-600/20 text-slate-500', // Cancelled
+  };
+  return colors[state] || 'bg-slate-500/20 text-slate-300';
+};
+
+const getDarkStatusColor = (status: string): string => {
+  switch (status) {
+    case 'ACTIVE':
+      return 'badge-dark-info';
+    case 'COMPLETED':
+      return 'badge-dark-success';
+    case 'DRAFT':
+      return 'badge-dark-neutral';
+    case 'CUSTOMER_PENDING':
+    case 'ONCHAIN_PENDING':
+    case 'PENDING':
+      return 'badge-dark-warning';
+    case 'FAILED':
+    case 'REJECTED':
+      return 'badge-dark-danger';
+    case 'CUSTOMER_CONFIRMED':
+      return 'badge-dark-info';
+    default:
+      return 'badge-dark-neutral';
+  }
+};
 
 interface AvailableTransition {
   name: string;
@@ -444,11 +477,11 @@ export function WorkflowDetailPage() {
   if (!isValidId) {
     return (
       <div className="space-y-6">
-        <div className="card p-6 text-center">
-          <ExclamationTriangleIcon className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-lg font-medium text-gray-900 mb-2">Invalid Workflow ID</h2>
-          <p className="text-sm text-gray-500 mb-4">The workflow ID is invalid or missing.</p>
-          <button onClick={() => navigate('/app/workflows')} className="btn btn-primary">
+        <div className="glass-card p-6 text-center">
+          <ExclamationTriangleIcon className="h-12 w-12 text-amber-400 mx-auto mb-4" />
+          <h2 className="text-lg font-medium text-white mb-2">Invalid Workflow ID</h2>
+          <p className="text-sm text-slate-400 mb-4">The workflow ID is invalid or missing.</p>
+          <button onClick={() => navigate('/app/workflows')} className="btn-dark-primary">
             Back to Workflows
           </button>
         </div>
@@ -460,8 +493,8 @@ export function WorkflowDetailPage() {
     return (
       <div className="space-y-6">
         <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/3 mb-4" />
-          <div className="h-4 bg-gray-200 rounded w-1/4" />
+          <div className="h-8 bg-white/10 rounded w-1/3 mb-4" />
+          <div className="h-4 bg-white/10 rounded w-1/4" />
         </div>
       </div>
     );
@@ -470,11 +503,11 @@ export function WorkflowDetailPage() {
   if (workflowError || !workflow) {
     return (
       <div className="space-y-6">
-        <div className="card p-6 text-center">
+        <div className="glass-card p-6 text-center">
           <XCircleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-lg font-medium text-gray-900 mb-2">Workflow Not Found</h2>
-          <p className="text-sm text-gray-500 mb-4">The requested workflow could not be found.</p>
-          <button onClick={() => navigate('/app/workflows')} className="btn btn-primary">
+          <h2 className="text-lg font-medium text-white mb-2">Workflow Not Found</h2>
+          <p className="text-sm text-slate-400 mb-4">The requested workflow could not be found.</p>
+          <button onClick={() => navigate('/app/workflows')} className="btn-dark-primary">
             Back to Workflows
           </button>
         </div>
@@ -485,8 +518,8 @@ export function WorkflowDetailPage() {
   if (!workflow) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-medium text-gray-900">Workflow not found</h2>
-        <Link to="/app/workflows" className="mt-4 text-enterprise-primary hover:underline">
+        <h2 className="text-xl font-medium text-white">Workflow not found</h2>
+        <Link to="/app/workflows" className="mt-4 text-red-400 hover:text-red-300 hover:underline">
           Back to workflows
         </Link>
       </div>
@@ -500,21 +533,21 @@ export function WorkflowDetailPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/app/workflows')}
-            className="p-2 hover:bg-gray-100 rounded-lg"
+            className="p-2 hover:bg-white/5 rounded-lg transition-colors"
           >
-            <ArrowLeftIcon className="h-5 w-5 text-gray-500" />
+            <ArrowLeftIcon className="h-5 w-5 text-slate-400" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{workflow.title}</h1>
+            <h1 className="text-2xl font-bold text-white">{workflow.title}</h1>
             {workflow.description && (
-              <p className="mt-1 text-gray-500">{workflow.description}</p>
+              <p className="mt-1 text-slate-400">{workflow.description}</p>
             )}
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className={getStatusColor(workflow.status)}>{workflow.status}</span>
+          <span className={getDarkStatusColor(workflow.status)}>{workflow.status}</span>
           <span
-            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStateColor(
+            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getDarkStateColor(
               workflow.currentState
             )}`}
           >
@@ -525,12 +558,12 @@ export function WorkflowDetailPage() {
 
       {/* Legacy Template Warning */}
       {workflow.isLegacy && (
-        <div className="rounded-lg bg-amber-50 border border-amber-200 p-4">
+        <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-4">
           <div className="flex">
             <ExclamationTriangleIcon className="h-5 w-5 text-amber-400" />
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-amber-800">Legacy Template</h3>
-              <p className="mt-1 text-sm text-amber-700">
+              <h3 className="text-sm font-medium text-amber-300">Legacy Template</h3>
+              <p className="mt-1 text-sm text-amber-400/80">
                 {workflow.legacyMessage || 'This workflow uses a template created before blockchain enforcement. Transitions are disabled.'}
               </p>
             </div>
@@ -547,13 +580,13 @@ export function WorkflowDetailPage() {
            !isWorkflowCompleted && 
            workflow.isOnChain && 
            workflow.status === 'ACTIVE' && (
-            <div className="card">
-              <div className="card-header">
-                <h2 className="text-lg font-medium text-gray-900">Available Actions</h2>
+            <div className="glass-card">
+              <div className="glass-card-header">
+                <h2 className="text-lg font-medium text-white">Available Actions</h2>
               </div>
-              <div className="card-body">
+              <div className="glass-card-body">
                 {hasPendingTransition ? (
-                  <div className="flex items-center gap-2 text-yellow-600">
+                  <div className="flex items-center gap-2 text-amber-400">
                     <ArrowPathIcon className="h-5 w-5 animate-spin" />
                     <span>Waiting for pending transition to complete...</span>
                   </div>
@@ -566,10 +599,10 @@ export function WorkflowDetailPage() {
                         disabled={transitionMutation.isPending}
                         className={
                           transition.name === 'approve'
-                            ? 'btn-success'
+                            ? 'btn-dark-success'
                             : transition.name === 'reject'
-                            ? 'btn-danger'
-                            : 'btn-secondary'
+                            ? 'btn-dark-danger'
+                            : 'btn-dark-secondary'
                         }
                       >
                         {transition.name === 'approve' && (
@@ -591,19 +624,19 @@ export function WorkflowDetailPage() {
           )}
 
           {/* Workflow Data */}
-          <div className="card">
-            <div className="card-header">
-              <h2 className="text-lg font-medium text-gray-900">Workflow Data</h2>
+          <div className="glass-card">
+            <div className="glass-card-header">
+              <h2 className="text-lg font-medium text-white">Workflow Data</h2>
             </div>
-            <div className="card-body">
+            <div className="glass-card-body">
               {workflow.data && Object.keys(workflow.data).length > 0 ? (
                 <dl className="space-y-4">
                   {Object.entries(workflow.data).map(([key, value]) => (
                     <div key={key}>
-                      <dt className="text-sm font-medium text-gray-500 capitalize">
+                      <dt className="text-sm font-medium text-slate-400 capitalize">
                         {key.replace(/_/g, ' ')}
                       </dt>
-                      <dd className="mt-1 text-sm text-gray-900">
+                      <dd className="mt-1 text-sm text-white">
                         {typeof value === 'object'
                           ? JSON.stringify(value, null, 2)
                           : String(value)}
@@ -612,46 +645,44 @@ export function WorkflowDetailPage() {
                   ))}
                 </dl>
               ) : (
-                <p className="text-sm text-gray-500">No additional data</p>
+                <p className="text-sm text-slate-500">No additional data</p>
               )}
             </div>
           </div>
 
           {/* Transition History */}
-          <div className="card">
-            <div className="card-header">
-              <h2 className="text-lg font-medium text-gray-900">Transition History</h2>
+          <div className="glass-card">
+            <div className="glass-card-header">
+              <h2 className="text-lg font-medium text-white">Transition History</h2>
             </div>
-            <div className="card-body p-0">
+            <div className="glass-card-body p-0">
               {workflow.transitions && workflow.transitions.length > 0 ? (
-                <div className="flow-root">
+                <div className="flow-root p-6">
                   <ul className="-mb-8">
                     {workflow.transitions.map((transition, idx) => (
                       <li key={transition.id}>
                         <div className="relative pb-8">
                           {idx !== workflow.transitions!.length - 1 && (
                             <span
-                              className="absolute left-4 top-4 -ml-px h-full w-0.5 bg-gray-200"
+                              className="absolute left-4 top-4 -ml-px h-full w-0.5 bg-white/10"
                               aria-hidden="true"
                             />
                           )}
                           <div className="relative flex space-x-3">
                             <div>
                               <span
-                                className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${
-                                  // REJECT actions should always show red, even if status is CONFIRMED
+                                className={`h-8 w-8 rounded-full flex items-center justify-center ring-4 ring-[#0A0A0B] ${
                                   transition.action === 'REJECT'
                                     ? 'bg-red-500'
                                     : transition.status === 'CONFIRMED' || transition.status === 'CONFIRMED_ONCHAIN'
-                                    ? 'bg-green-500'
+                                    ? 'bg-cyan-500'
                                     : transition.status === 'FAILED' || transition.status === 'FAILED_ONCHAIN'
                                     ? 'bg-red-500'
                                     : transition.status === 'PENDING' || transition.status === 'ONCHAIN_PENDING'
-                                    ? 'bg-yellow-500'
-                                    : 'bg-gray-500'
+                                    ? 'bg-amber-500'
+                                    : 'bg-slate-500'
                                 }`}
                               >
-                                {/* REJECT actions should show X icon */}
                                 {transition.action === 'REJECT' ? (
                                   <XCircleIcon className="h-5 w-5 text-white" />
                                 ) : transition.status === 'CONFIRMED' || transition.status === 'CONFIRMED_ONCHAIN' ? (
@@ -667,48 +698,47 @@ export function WorkflowDetailPage() {
                             </div>
                             <div className="flex-1 min-w-0 pt-1.5">
                               <div className="flex items-center justify-between">
-                                <p className="text-sm text-gray-900">
+                                <p className="text-sm text-white">
                                   <span className="font-medium capitalize">
                                     {transition.action}
                                   </span>
-                                  <span className="text-gray-500">
+                                  <span className="text-slate-400">
                                     {' '}
                                     from {getStateName(transition.fromState)} to{' '}
                                     {getStateName(transition.toState)}
                                   </span>
                                 </p>
-                                {/* Show REJECTED for REJECT actions, otherwise show the actual status */}
-                                <span className={transition.action === 'REJECT' ? 'text-sm font-medium text-red-600' : getStatusColor(transition.status)}>
+                                <span className={transition.action === 'REJECT' ? 'text-sm font-medium text-red-400' : getDarkStatusColor(transition.status)}>
                                   {transition.action === 'REJECT' ? 'REJECTED' : transition.status}
                                 </span>
                               </div>
                               {transition.comment && (
-                                <p className="mt-1 text-sm text-gray-500">
+                                <p className="mt-1 text-sm text-slate-500">
                                   {transition.comment}
                                 </p>
                               )}
                               {transition.deployHash && (
-                                <p className="mt-1 text-xs font-mono text-gray-400">
+                                <p className="mt-1 text-xs font-mono text-slate-500">
                                   <button
                                     onClick={() => {
                                       copyToClipboard(transition.deployHash!);
                                       toast.success('Deploy hash copied');
                                     }}
-                                    className="hover:text-enterprise-primary"
+                                    className="hover:text-red-400 transition-colors"
                                   >
                                     {truncateHash(transition.deployHash)}
                                   </button>
                                 </p>
                               )}
                               <div className="mt-1 flex items-center gap-3">
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-slate-500">
                                   {formatRelativeTime(transition.createdAt)}
                                 </p>
                                 {transition.status === 'PENDING' && (
                                   <button
                                     onClick={() => cancelTransitionMutation.mutate(transition.id)}
                                     disabled={cancelTransitionMutation.isPending}
-                                    className="text-xs text-red-600 hover:text-red-800 font-medium"
+                                    className="text-xs text-red-400 hover:text-red-300 font-medium transition-colors"
                                   >
                                     {cancelTransitionMutation.isPending ? 'Cancelling...' : 'Cancel'}
                                   </button>
@@ -722,7 +752,7 @@ export function WorkflowDetailPage() {
                   </ul>
                 </div>
               ) : (
-                <div className="p-6 text-center text-gray-500">
+                <div className="p-6 text-center text-slate-500">
                   No transitions recorded
                 </div>
               )}
@@ -733,41 +763,41 @@ export function WorkflowDetailPage() {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Details */}
-          <div className="card">
-            <div className="card-header">
-              <h2 className="text-lg font-medium text-gray-900">Details</h2>
+          <div className="glass-card">
+            <div className="glass-card-header">
+              <h2 className="text-lg font-medium text-white">Details</h2>
             </div>
-            <div className="card-body">
+            <div className="glass-card-body">
               <dl className="space-y-4">
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">Created</dt>
-                  <dd className="mt-1 text-sm text-gray-900">
+                  <dt className="text-sm font-medium text-slate-400">Created</dt>
+                  <dd className="mt-1 text-sm text-white">
                     {formatDateTime(workflow.createdAt)}
                   </dd>
                 </div>
                 {workflow.submittedAt && (
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Submitted</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
+                    <dt className="text-sm font-medium text-slate-400">Submitted</dt>
+                    <dd className="mt-1 text-sm text-white">
                       {formatDateTime(workflow.submittedAt)}
                     </dd>
                   </div>
                 )}
                 {workflow.dueDate && (
                   <div>
-                    <dt className="text-sm font-medium text-gray-500 flex items-center gap-1">
+                    <dt className="text-sm font-medium text-slate-400 flex items-center gap-1">
                       <ClockIcon className="h-4 w-4" />
                       Due Date
                     </dt>
-                    <dd className="mt-1 text-sm text-gray-900">
+                    <dd className="mt-1 text-sm text-white">
                       {formatDateTime(workflow.dueDate)}
                     </dd>
                   </div>
                 )}
                 {workflow.completedAt && (
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Completed</dt>
-                    <dd className="mt-1 text-sm text-gray-900">
+                    <dt className="text-sm font-medium text-slate-400">Completed</dt>
+                    <dd className="mt-1 text-sm text-white">
                       {formatDateTime(workflow.completedAt)}
                     </dd>
                   </div>
@@ -777,29 +807,29 @@ export function WorkflowDetailPage() {
           </div>
 
           {/* Blockchain Info */}
-          <div className="card">
-            <div className="card-header">
-              <h2 className="text-lg font-medium text-gray-900">Blockchain</h2>
+          <div className="glass-card">
+            <div className="glass-card-header">
+              <h2 className="text-lg font-medium text-white">Blockchain</h2>
             </div>
-            <div className="card-body">
+            <div className="glass-card-body">
               <dl className="space-y-4">
                 {workflow.workflowId && (
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">On-chain ID</dt>
-                    <dd className="mt-1 text-sm font-mono text-gray-900">
+                    <dt className="text-sm font-medium text-slate-400">On-chain ID</dt>
+                    <dd className="mt-1 text-sm font-mono text-white">
                       #{workflow.workflowId}
                     </dd>
                   </div>
                 )}
                 {workflow.deployHash && (
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Deploy Hash</dt>
+                    <dt className="text-sm font-medium text-slate-400">Deploy Hash</dt>
                     <dd className="mt-1">
                       <a
                         href={`https://testnet.cspr.live/deploy/${workflow.deployHash}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm font-mono text-enterprise-primary hover:underline"
+                        className="text-sm font-mono text-red-400 hover:text-red-300 hover:underline transition-colors"
                       >
                         {truncateHash(workflow.deployHash)}
                       </a>
@@ -807,18 +837,18 @@ export function WorkflowDetailPage() {
                   </div>
                 )}
                 {workflow.status === 'ONCHAIN_PENDING' && (
-                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                  <div className="flex items-center gap-2 text-sm text-blue-400">
                     <ArrowPathIcon className="h-4 w-4 animate-spin" />
                     <span>Awaiting blockchain confirmation...</span>
                   </div>
                 )}
                 {!workflow.workflowId && !workflow.deployHash && workflow.status !== 'ONCHAIN_PENDING' && workflow.status !== 'CUSTOMER_CONFIRMED' && (
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-slate-500">
                     Not yet submitted to blockchain
                   </p>
                 )}
                 {workflow.isPendingApproval && (
-                  <p className="text-sm text-amber-600">
+                  <p className="text-sm text-amber-400">
                     Awaiting approver review. Blockchain registration happens upon approval.
                   </p>
                 )}
@@ -828,16 +858,16 @@ export function WorkflowDetailPage() {
 
           {/* Compliance Proof Section - Only for completed workflows */}
           {isWorkflowCompleted && (
-            <div className="card border-2 border-green-200 bg-green-50">
-              <div className="card-header bg-green-100">
-                <h2 className="text-lg font-medium text-green-900 flex items-center gap-2">
+            <div className="glass-card border-2 border-cyan-500/30">
+              <div className="glass-card-header bg-cyan-500/10">
+                <h2 className="text-lg font-medium text-cyan-400 flex items-center gap-2">
                   <ShieldCheckIcon className="h-5 w-5" />
                   Verifiable Compliance Proof
                 </h2>
               </div>
-              <div className="card-body">
+              <div className="glass-card-body">
                 {proofLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="flex items-center gap-2 text-sm text-slate-400">
                     <ArrowPathIcon className="h-4 w-4 animate-spin" />
                     <span>Loading compliance proof...</span>
                   </div>
@@ -845,27 +875,27 @@ export function WorkflowDetailPage() {
                   <div className="space-y-4">
                     {/* Proof Status */}
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-700">Status:</span>
+                      <span className="text-sm font-medium text-slate-300">Status:</span>
                       {complianceProof.status === 'CONFIRMED' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <span className="badge-dark-success flex items-center gap-1">
                           <CheckCircleIcon className="h-3 w-3" />
                           Verified On-Chain
                         </span>
                       )}
                       {complianceProof.status === 'ONCHAIN_PENDING' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="badge-dark-info flex items-center gap-1">
                           <ArrowPathIcon className="h-3 w-3 animate-spin" />
                           Pending Confirmation
                         </span>
                       )}
                       {complianceProof.status === 'PENDING' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        <span className="badge-dark-warning flex items-center gap-1">
                           <ClockIcon className="h-3 w-3" />
                           Processing
                         </span>
                       )}
                       {complianceProof.status === 'FAILED' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        <span className="badge-dark-danger flex items-center gap-1">
                           <XCircleIcon className="h-3 w-3" />
                           Failed
                         </span>
@@ -875,14 +905,14 @@ export function WorkflowDetailPage() {
                     {/* Proof Hash */}
                     {complianceProof.proofHash && (
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Proof Hash</dt>
+                        <dt className="text-sm font-medium text-slate-400">Proof Hash</dt>
                         <dd className="mt-1 flex items-center gap-2">
-                          <span className="text-sm font-mono text-gray-900">
+                          <span className="text-sm font-mono text-slate-300">
                             {truncateHash(complianceProof.proofHash)}
                           </span>
                           <button
                             onClick={() => copyToClipboard(complianceProof.proofHash!)}
-                            className="text-xs text-gray-400 hover:text-gray-600"
+                            className="text-xs text-slate-500 hover:text-white transition-colors"
                             title="Copy full hash"
                           >
                             Copy
@@ -894,13 +924,13 @@ export function WorkflowDetailPage() {
                     {/* Deploy Hash */}
                     {complianceProof.proofDeployHash && (
                       <div>
-                        <dt className="text-sm font-medium text-gray-500">Proof Deploy</dt>
+                        <dt className="text-sm font-medium text-slate-400">Proof Deploy</dt>
                         <dd className="mt-1">
                           <a
                             href={`https://testnet.cspr.live/deploy/${complianceProof.proofDeployHash}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm font-mono text-enterprise-primary hover:underline"
+                            className="text-sm font-mono text-red-400 hover:text-red-300 hover:underline transition-colors"
                           >
                             {truncateHash(complianceProof.proofDeployHash)}
                           </a>
@@ -910,8 +940,8 @@ export function WorkflowDetailPage() {
 
                     {/* Error message */}
                     {complianceProof.error && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                        <p className="text-sm text-red-700">{complianceProof.error}</p>
+                      <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                        <p className="text-sm text-red-400">{complianceProof.error}</p>
                       </div>
                     )}
 
@@ -920,14 +950,14 @@ export function WorkflowDetailPage() {
                       <div className="flex flex-wrap gap-2 pt-2">
                         <button
                           onClick={handleExportProof}
-                          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                          className="btn-dark-secondary btn-sm flex items-center gap-1.5"
                         >
                           <ArrowDownTrayIcon className="h-4 w-4" />
                           Export Proof JSON
                         </button>
                         <Link
                           to="/verify"
-                          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700"
+                          className="btn-dark-success btn-sm flex items-center gap-1.5"
                         >
                           <ShieldCheckIcon className="h-4 w-4" />
                           Verify Proof
@@ -935,13 +965,13 @@ export function WorkflowDetailPage() {
                       </div>
                     )}
 
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-slate-500">
                       This cryptographic proof verifies that the workflow reached final approval
                       with specific documents reviewed. It is permanently anchored on the Casper blockchain.
                     </p>
                   </div>
                 ) : (
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-slate-500">
                     <p>Compliance proof is being generated...</p>
                     <p className="text-xs mt-1">This process may take a few moments.</p>
                   </div>
@@ -952,27 +982,27 @@ export function WorkflowDetailPage() {
 
           {/* Approver Action Section - Only for approvers when workflow is pending approval */}
           {workflow.canApprove && (
-            <div className="card border-2 border-amber-200 bg-amber-50">
-              <div className="card-header bg-amber-100">
-                <h2 className="text-lg font-medium text-amber-900 flex items-center gap-2">
+            <div className="glass-card border-2 border-amber-500/30">
+              <div className="glass-card-header bg-amber-500/10">
+                <h2 className="text-lg font-medium text-amber-400 flex items-center gap-2">
                   <ExclamationCircleIcon className="h-5 w-5" />
                   Approval Required
                 </h2>
               </div>
-              <div className="card-body space-y-4">
-                <p className="text-sm text-gray-700">
+              <div className="glass-card-body space-y-4">
+                <p className="text-sm text-slate-300">
                   This workflow has been confirmed by the customer and is ready for your review.
                   Approving will register the workflow on the blockchain.
                 </p>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="label-dark">
                     Decision Comment (required for rejection)
                   </label>
                   <textarea
                     value={approvalComment}
                     onChange={(e) => setApprovalComment(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-enterprise-primary/20"
+                    className="input-dark"
                     rows={3}
                     placeholder="Enter your review comments..."
                   />
@@ -982,7 +1012,7 @@ export function WorkflowDetailPage() {
                   <button
                     onClick={() => approveWorkflowMutation.mutate(approvalComment)}
                     disabled={approveWorkflowMutation.isPending || rejectWorkflowMutation.isPending}
-                    className="flex-1 btn-primary flex items-center justify-center gap-2"
+                    className="flex-1 btn-dark-primary flex items-center justify-center gap-2"
                   >
                     {approveWorkflowMutation.isPending ? (
                       <>
@@ -1005,7 +1035,7 @@ export function WorkflowDetailPage() {
                       rejectWorkflowMutation.mutate(approvalComment);
                     }}
                     disabled={approveWorkflowMutation.isPending || rejectWorkflowMutation.isPending}
-                    className="flex-1 btn-secondary bg-red-50 text-red-700 border-red-300 hover:bg-red-100 flex items-center justify-center gap-2"
+                    className="flex-1 btn-dark-danger flex items-center justify-center gap-2"
                   >
                     {rejectWorkflowMutation.isPending ? (
                       <>
@@ -1026,26 +1056,26 @@ export function WorkflowDetailPage() {
 
           {/* Resubmit Section - For rejected off-chain workflows, shown to creator/requester or assigned customer */}
           {workflow.canResubmit && (
-            <div className="card border-2 border-blue-200 bg-blue-50">
-              <div className="card-header bg-blue-100">
-                <h2 className="text-lg font-medium text-blue-900 flex items-center gap-2">
+            <div className="glass-card border-2 border-blue-500/30">
+              <div className="glass-card-header bg-blue-500/10">
+                <h2 className="text-lg font-medium text-blue-400 flex items-center gap-2">
                   <ArrowPathIcon className="h-5 w-5" />
                   Resubmit for Approval
                 </h2>
               </div>
-              <div className="card-body space-y-4">
-                <p className="text-sm text-gray-700">
+              <div className="glass-card-body space-y-4">
+                <p className="text-sm text-slate-300">
                   This workflow was rejected. You can upload additional documents and resubmit it for approval.
                 </p>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="label-dark">
                     Resubmission Comment (optional)
                   </label>
                   <textarea
                     value={approvalComment}
                     onChange={(e) => setApprovalComment(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-enterprise-primary/20"
+                    className="input-dark"
                     rows={3}
                     placeholder="Describe what changes you've made..."
                   />
@@ -1054,7 +1084,7 @@ export function WorkflowDetailPage() {
                 <button
                   onClick={() => resubmitWorkflowMutation.mutate(approvalComment)}
                   disabled={resubmitWorkflowMutation.isPending}
-                  className="w-full btn-primary flex items-center justify-center gap-2"
+                  className="w-full btn-dark-primary flex items-center justify-center gap-2"
                 >
                   {resubmitWorkflowMutation.isPending ? (
                     <>
@@ -1073,12 +1103,12 @@ export function WorkflowDetailPage() {
           )}
 
           {/* Documents */}
-          <div className="card">
-            <div className="card-header flex items-center justify-between">
-              <h2 className="text-lg font-medium text-gray-900">Documents</h2>
+          <div className="glass-card">
+            <div className="glass-card-header flex items-center justify-between">
+              <h2 className="text-lg font-medium text-white">Documents</h2>
               {/* Only show upload button for off-chain workflows or rejected workflows */}
               {(!workflow.isOnChain || workflow.status === 'REJECTED') && (
-                <label className="text-sm text-enterprise-primary hover:underline cursor-pointer flex items-center gap-1">
+                <label className="text-sm text-red-400 hover:text-red-300 cursor-pointer flex items-center gap-1 transition-colors">
                   <ArrowUpTrayIcon className="h-4 w-4" />
                   {isUploading ? 'Uploading...' : 'Upload'}
                   <input
@@ -1091,16 +1121,16 @@ export function WorkflowDetailPage() {
                 </label>
               )}
             </div>
-            <div className="card-body">
+            <div className="glass-card-body">
               {documents && documents.length > 0 ? (
-                <ul className="divide-y divide-gray-200">
+                <ul className="divide-y divide-white/10">
                   {documents.map((doc) => (
                     <li key={doc.id} className="py-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <DocumentTextIcon className="h-6 w-6 text-gray-400" />
+                        <DocumentTextIcon className="h-6 w-6 text-slate-500" />
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{doc.name}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-sm font-medium text-white">{doc.name}</p>
+                          <p className="text-xs text-slate-500">
                             {formatFileSize(doc.size)} • {formatRelativeTime(doc.createdAt)}
                           </p>
                         </div>
@@ -1108,7 +1138,7 @@ export function WorkflowDetailPage() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleDownload(doc)}
-                          className="p-1 text-gray-400 hover:text-enterprise-primary"
+                          className="p-1 text-slate-500 hover:text-red-400 transition-colors"
                           title="Download"
                         >
                           <ArrowDownTrayIcon className="h-4 w-4" />
@@ -1121,7 +1151,7 @@ export function WorkflowDetailPage() {
                                 deleteMutation.mutate(doc.id);
                               }
                             }}
-                            className="p-1 text-gray-400 hover:text-red-500"
+                            className="p-1 text-slate-500 hover:text-red-500 transition-colors"
                             title="Delete"
                           >
                             <TrashIcon className="h-4 w-4" />
@@ -1132,10 +1162,10 @@ export function WorkflowDetailPage() {
                   ))}
                 </ul>
               ) : (
-                <div className="text-center py-4 text-gray-500">
-                  <DocumentTextIcon className="h-8 w-8 mx-auto text-gray-400" />
+                <div className="text-center py-4 text-slate-500">
+                  <DocumentTextIcon className="h-8 w-8 mx-auto text-slate-600" />
                   <p className="mt-2 text-sm">No documents attached</p>
-                  <p className="text-xs text-gray-400 mt-1">Click Upload to add documents</p>
+                  <p className="text-xs text-slate-600 mt-1">Click Upload to add documents</p>
                 </div>
               )}
             </div>
@@ -1159,7 +1189,7 @@ export function WorkflowDetailPage() {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-black bg-opacity-25" />
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
           </Transition.Child>
 
           <div className="fixed inset-0 overflow-y-auto">
@@ -1173,34 +1203,34 @@ export function WorkflowDetailPage() {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-[#1a1a1b] border border-white/10 p-6 text-left align-middle shadow-xl transition-all">
                   <Dialog.Title
                     as="h3"
-                    className="text-lg font-medium leading-6 text-gray-900"
+                    className="text-lg font-medium leading-6 text-white"
                   >
                     Confirm Transition: {selectedTransition?.name && (selectedTransition.name.charAt(0).toUpperCase() + selectedTransition.name.slice(1))}
                   </Dialog.Title>
                   <div className="mt-4">
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-slate-400">
                       This action will be recorded on the Casper blockchain and cannot
                       be undone. Your wallet will be prompted to sign the transaction.
                     </p>
                     <div className="mt-4">
-                      <label htmlFor="comment" className="label">
+                      <label htmlFor="comment" className="label-dark">
                         Comment (optional)
                       </label>
                       <textarea
                         id="comment"
                         rows={3}
-                        className="input"
+                        className="input-dark"
                         placeholder="Add a comment for this transition..."
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
                       />
                     </div>
                     {!isConnected && (
-                      <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
-                        <p className="text-sm text-yellow-800">
+                      <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                        <p className="text-sm text-amber-400">
                           Wallet not connected. Using:{' '}
                           <span className="font-mono">{truncateHash(publicKey || '')}</span>
                         </p>
@@ -1211,7 +1241,7 @@ export function WorkflowDetailPage() {
                   <div className="mt-6 flex gap-3">
                     <button
                       type="button"
-                      className="btn-secondary flex-1"
+                      className="btn-dark-secondary flex-1"
                       onClick={() => setIsTransitionModalOpen(false)}
                     >
                       Cancel
@@ -1220,8 +1250,8 @@ export function WorkflowDetailPage() {
                       type="button"
                       className={`flex-1 ${
                         selectedTransition?.name === 'reject'
-                          ? 'btn-danger'
-                          : 'btn-primary'
+                          ? 'btn-dark-danger'
+                          : 'btn-dark-primary'
                       }`}
                       onClick={submitTransition}
                       disabled={transitionMutation.isPending}

@@ -1,5 +1,5 @@
 // =============================================================================
-// Templates Page
+// Templates Page - Luminous Dark Cyberpunk Enterprise Theme
 // =============================================================================
 
 import { useState, Fragment } from 'react';
@@ -189,12 +189,12 @@ export function TemplatesPage() {
 
   const getStatusBadge = (status: TemplateStatus) => {
     const classes: Record<TemplateStatus, string> = {
-      DRAFT: 'badge-neutral',
-      PUBLISHED: 'badge-success',
-      DEPRECATED: 'badge-warning',
-      ARCHIVED: 'badge-danger',
+      DRAFT: 'badge-dark-neutral',
+      PUBLISHED: 'badge-dark-success',
+      DEPRECATED: 'badge-dark-warning',
+      ARCHIVED: 'badge-dark-danger',
     };
-    return classes[status] || 'badge-neutral';
+    return classes[status] || 'badge-dark-neutral';
   };
 
   return (
@@ -202,14 +202,14 @@ export function TemplatesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Workflow Templates</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-white">Workflow Templates</h1>
+          <p className="mt-1 text-sm text-slate-400">
             Define and manage workflow templates
           </p>
         </div>
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="btn-primary"
+          className="btn-dark-primary"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
           New Template
@@ -220,12 +220,12 @@ export function TemplatesPage() {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="card">
-              <div className="card-body">
+            <div key={i} className="glass-card">
+              <div className="glass-card-body">
                 <div className="animate-pulse space-y-4">
-                  <div className="h-6 bg-gray-200 rounded w-3/4" />
-                  <div className="h-4 bg-gray-200 rounded w-full" />
-                  <div className="h-4 bg-gray-200 rounded w-1/2" />
+                  <div className="h-6 bg-white/10 rounded w-3/4" />
+                  <div className="h-4 bg-white/10 rounded w-full" />
+                  <div className="h-4 bg-white/10 rounded w-1/2" />
                 </div>
               </div>
             </div>
@@ -234,11 +234,11 @@ export function TemplatesPage() {
       ) : templates && templates.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {templates.map((template) => (
-            <div key={template.id} className="card">
-              <div className="card-body">
+            <div key={template.id} className="glass-card">
+              <div className="glass-card-body">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">
+                    <h3 className="text-lg font-medium text-white">
                       {template.name}
                     </h3>
                     <div className="flex items-center gap-2 mt-1">
@@ -246,47 +246,47 @@ export function TemplatesPage() {
                         {template.status}
                       </span>
                       {template.isLegacy && (
-                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                        <span className="badge-dark-warning">
                           Legacy
                         </span>
                       )}
                     </div>
                   </div>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-slate-500">
                     v{template.version}
                   </span>
                 </div>
                 {template.isLegacy && (
-                  <p className="mt-2 text-xs text-amber-600">
+                  <p className="mt-2 text-xs text-amber-400">
                     Not registered on blockchain. Must be republished.
                   </p>
                 )}
                 {template.description && (
-                  <p className="mt-2 text-sm text-gray-500 line-clamp-2">
+                  <p className="mt-2 text-sm text-slate-400 line-clamp-2">
                     {template.description}
                   </p>
                 )}
-                <div className="mt-4 flex items-center gap-4 text-sm text-gray-500">
+                <div className="mt-4 flex items-center gap-4 text-sm text-slate-500">
                   <span>{template.states?.length || 0} states</span>
                   <span>•</span>
                   <span>SLA: {template.slaDays || 7}d</span>
                 </div>
-                <div className="mt-2 text-xs text-gray-400">
+                <div className="mt-2 text-xs text-slate-600">
                   Created {formatDate(template.createdAt)}
                 </div>
-                <div className="mt-4 pt-4 border-t border-gray-200 flex items-center gap-2">
+                <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-2">
                   {template.status === 'DRAFT' && !template.registrationDeployHash && (
                     <>
                       <button
                         onClick={() => publishMutation.mutate(template.id)}
                         disabled={publishingTemplateId === template.id}
-                        className="btn-success btn-sm flex-1"
+                        className="btn-dark-success btn-sm flex-1"
                       >
                         {publishingTemplateId === template.id ? 'Submitting...' : 'Publish'}
                       </button>
                       <button 
                         onClick={() => openEditModal(template)}
-                        className="btn-secondary btn-sm"
+                        className="btn-dark-secondary btn-sm"
                         title="Edit template"
                         disabled={publishingTemplateId === template.id}
                       >
@@ -298,7 +298,7 @@ export function TemplatesPage() {
                             deleteMutation.mutate(template.id);
                           }
                         }}
-                        className="btn-danger btn-sm"
+                        className="btn-dark-danger btn-sm"
                         disabled={publishingTemplateId === template.id}
                       >
                         <TrashIcon className="h-4 w-4" />
@@ -306,7 +306,7 @@ export function TemplatesPage() {
                     </>
                   )}
                   {template.registrationDeployHash && !template.onChainWorkflowId && (
-                    <div className="flex items-center gap-2 text-sm text-yellow-600">
+                    <div className="flex items-center gap-2 text-sm text-amber-400">
                       <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -315,7 +315,7 @@ export function TemplatesPage() {
                     </div>
                   )}
                   {template.status === 'PUBLISHED' && template.onChainWorkflowId && (
-                    <span className="text-sm text-green-600">
+                    <span className="text-sm text-cyan-400">
                       Active - used for new workflows
                     </span>
                   )}
@@ -323,7 +323,7 @@ export function TemplatesPage() {
                     <button
                       onClick={() => publishMutation.mutate(template.id)}
                       disabled={publishingTemplateId === template.id}
-                      className="btn-warning btn-sm flex-1"
+                      className="btn-dark-warning btn-sm flex-1"
                     >
                       {publishingTemplateId === template.id ? 'Registering...' : 'Register on Blockchain'}
                     </button>
@@ -334,10 +334,10 @@ export function TemplatesPage() {
           ))}
         </div>
       ) : (
-        <div className="card">
-          <div className="card-body text-center py-12">
-            <p className="text-gray-500">No templates yet.</p>
-            <p className="text-sm text-gray-400 mt-1">
+        <div className="glass-card">
+          <div className="glass-card-body text-center py-12">
+            <p className="text-slate-400">No templates yet.</p>
+            <p className="text-sm text-slate-500 mt-1">
               Create your first template to get started.
             </p>
           </div>
@@ -360,7 +360,7 @@ export function TemplatesPage() {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-black bg-opacity-25" />
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
           </Transition.Child>
 
           <div className="fixed inset-0 overflow-y-auto">
@@ -374,41 +374,41 @@ export function TemplatesPage() {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
+                <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-[#1a1a1b] border border-white/10 p-6 shadow-xl transition-all">
                   <Dialog.Title
                     as="h3"
-                    className="text-lg font-medium text-gray-900"
+                    className="text-lg font-medium text-white"
                   >
                     Create New Template
                   </Dialog.Title>
 
                   <form onSubmit={handleSubmit(onSubmit)} className="mt-4 space-y-4">
                     <div>
-                      <label htmlFor="name" className="label">
+                      <label htmlFor="name" className="label-dark">
                         Name <span className="text-red-500">*</span>
                       </label>
                       <input
                         id="name"
                         type="text"
-                        className="input"
+                        className="input-dark"
                         placeholder="e.g., Document Approval"
                         {...register('name', { required: 'Name is required' })}
                       />
                       {errors.name && (
-                        <p className="mt-1 text-sm text-red-600">
+                        <p className="mt-1 text-sm text-red-400">
                           {errors.name.message}
                         </p>
                       )}
                     </div>
 
                     <div>
-                      <label htmlFor="description" className="label">
+                      <label htmlFor="description" className="label-dark">
                         Description
                       </label>
                       <textarea
                         id="description"
                         rows={3}
-                        className="input"
+                        className="input-dark"
                         placeholder="Describe the workflow purpose..."
                         {...register('description')}
                       />
@@ -416,7 +416,7 @@ export function TemplatesPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label htmlFor="slaDays" className="label">
+                        <label htmlFor="slaDays" className="label-dark">
                           SLA (days)
                         </label>
                         <input
@@ -424,7 +424,7 @@ export function TemplatesPage() {
                           type="number"
                           min="1"
                           defaultValue={7}
-                          className="input"
+                          className="input-dark"
                           {...register('slaDays', {
                             required: true,
                             valueAsNumber: true,
@@ -433,7 +433,7 @@ export function TemplatesPage() {
                         />
                       </div>
                       <div>
-                        <label htmlFor="escalationDays" className="label">
+                        <label htmlFor="escalationDays" className="label-dark">
                           Escalation (days)
                         </label>
                         <input
@@ -441,7 +441,7 @@ export function TemplatesPage() {
                           type="number"
                           min="1"
                           defaultValue={14}
-                          className="input"
+                          className="input-dark"
                           {...register('escalationDays', {
                             required: true,
                             valueAsNumber: true,
@@ -451,11 +451,11 @@ export function TemplatesPage() {
                       </div>
                     </div>
 
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="text-sm font-medium text-gray-900">
+                    <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                      <h4 className="text-sm font-medium text-white">
                         Default States
                       </h4>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-slate-400 mt-1">
                         This template will include the standard workflow states:
                         Draft → Pending Review → Approved/Rejected
                       </p>
@@ -464,7 +464,7 @@ export function TemplatesPage() {
                     <div className="flex gap-3 pt-4">
                       <button
                         type="button"
-                        className="btn-secondary flex-1"
+                        className="btn-dark-secondary flex-1"
                         onClick={() => setIsCreateModalOpen(false)}
                       >
                         Cancel
@@ -472,7 +472,7 @@ export function TemplatesPage() {
                       <button
                         type="submit"
                         disabled={createMutation.isPending}
-                        className="btn-primary flex-1"
+                        className="btn-dark-primary flex-1"
                       >
                         {createMutation.isPending ? 'Creating...' : 'Create Template'}
                       </button>
@@ -501,7 +501,7 @@ export function TemplatesPage() {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-black bg-opacity-25" />
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" />
           </Transition.Child>
 
           <div className="fixed inset-0 overflow-y-auto">
@@ -515,41 +515,41 @@ export function TemplatesPage() {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
+                <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-[#1a1a1b] border border-white/10 p-6 shadow-xl transition-all">
                   <Dialog.Title
                     as="h3"
-                    className="text-lg font-medium text-gray-900"
+                    className="text-lg font-medium text-white"
                   >
                     Edit Template
                   </Dialog.Title>
 
                   <form onSubmit={handleEditSubmit(onEditSubmit)} className="mt-4 space-y-4">
                     <div>
-                      <label htmlFor="edit-name" className="label">
+                      <label htmlFor="edit-name" className="label-dark">
                         Name <span className="text-red-500">*</span>
                       </label>
                       <input
                         id="edit-name"
                         type="text"
-                        className="input"
+                        className="input-dark"
                         placeholder="e.g., Document Approval"
                         {...registerEdit('name', { required: 'Name is required' })}
                       />
                       {editErrors.name && (
-                        <p className="mt-1 text-sm text-red-600">
+                        <p className="mt-1 text-sm text-red-400">
                           {editErrors.name.message}
                         </p>
                       )}
                     </div>
 
                     <div>
-                      <label htmlFor="edit-description" className="label">
+                      <label htmlFor="edit-description" className="label-dark">
                         Description
                       </label>
                       <textarea
                         id="edit-description"
                         rows={3}
-                        className="input"
+                        className="input-dark"
                         placeholder="Describe the workflow purpose..."
                         {...registerEdit('description')}
                       />
@@ -557,14 +557,14 @@ export function TemplatesPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label htmlFor="edit-slaDays" className="label">
+                        <label htmlFor="edit-slaDays" className="label-dark">
                           SLA (days)
                         </label>
                         <input
                           id="edit-slaDays"
                           type="number"
                           min="1"
-                          className="input"
+                          className="input-dark"
                           {...registerEdit('slaDays', {
                             required: true,
                             valueAsNumber: true,
@@ -573,14 +573,14 @@ export function TemplatesPage() {
                         />
                       </div>
                       <div>
-                        <label htmlFor="edit-escalationDays" className="label">
+                        <label htmlFor="edit-escalationDays" className="label-dark">
                           Escalation (days)
                         </label>
                         <input
                           id="edit-escalationDays"
                           type="number"
                           min="1"
-                          className="input"
+                          className="input-dark"
                           {...registerEdit('escalationDays', {
                             required: true,
                             valueAsNumber: true,
@@ -593,7 +593,7 @@ export function TemplatesPage() {
                     <div className="flex gap-3 pt-4">
                       <button
                         type="button"
-                        className="btn-secondary flex-1"
+                        className="btn-dark-secondary flex-1"
                         onClick={() => setIsEditModalOpen(false)}
                       >
                         Cancel
@@ -601,7 +601,7 @@ export function TemplatesPage() {
                       <button
                         type="submit"
                         disabled={updateMutation.isPending}
-                        className="btn-primary flex-1"
+                        className="btn-dark-primary flex-1"
                       >
                         {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
                       </button>

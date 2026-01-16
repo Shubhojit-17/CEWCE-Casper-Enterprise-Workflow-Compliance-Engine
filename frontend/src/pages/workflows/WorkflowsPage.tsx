@@ -1,5 +1,5 @@
 // =============================================================================
-// Workflows List Page
+// Workflows List Page - Luminous Dark Cyberpunk Enterprise Theme
 // =============================================================================
 
 import { useState } from 'react';
@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../stores/auth';
-import { formatDate, getStateName, getStateColor, getStatusColor } from '../../lib/utils';
+import { formatDate, getStateName } from '../../lib/utils';
 import type { WorkflowInstance, User } from '../../types';
 
 interface WorkflowInstancesResponse {
@@ -27,6 +27,45 @@ interface WorkflowInstancesResponse {
       totalPages: number;
     };
   };
+}
+
+// Dark theme state colors (numeric state IDs)
+function getDarkStateColor(stateId: number): string {
+  switch (stateId) {
+    case 10: // Approved
+      return 'badge-dark-success';
+    case 11: // Rejected
+    case 30: // Cancelled
+      return 'badge-dark-danger';
+    case 1: // Pending Review
+      return 'badge-dark-warning';
+    case 20: // Escalated
+      return 'badge-dark-purple';
+    case 0: // Draft
+    default:
+      return 'badge-dark-neutral';
+  }
+}
+
+// Dark theme status colors
+function getDarkStatusColor(status: string): string {
+  switch (status) {
+    case 'COMPLETED':
+      return 'badge-dark-success';
+    case 'CANCELLED':
+    case 'REJECTED':
+      return 'badge-dark-danger';
+    case 'PENDING':
+      return 'badge-dark-warning';
+    case 'ACTIVE':
+      return 'badge-dark-info';
+    case 'ESCALATED':
+      return 'badge-dark-purple';
+    case 'DRAFT':
+      return 'badge-dark-neutral';
+    default:
+      return 'badge-dark-neutral';
+  }
 }
 
 export function WorkflowsPage() {
@@ -126,13 +165,13 @@ export function WorkflowsPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Workflows</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-white">Workflows</h1>
+          <p className="mt-1 text-sm text-slate-400">
             Manage and track all workflow instances
           </p>
         </div>
         {canCreateWorkflow && (
-          <Link to="/app/workflows/new" className="btn-primary">
+          <Link to="/app/workflows/new" className="btn-dark-primary">
             <PlusIcon className="h-5 w-5 mr-2" />
             New Workflow
           </Link>
@@ -140,30 +179,30 @@ export function WorkflowsPage() {
       </div>
 
       {/* Filters */}
-      <div className="card">
-        <div className="card-body">
+      <div className="glass-card">
+        <div className="glass-card-body">
           <div className="flex flex-col sm:flex-row gap-4">
             {/* Search */}
             <form onSubmit={handleSearch} className="flex-1">
               <div className="relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
                 <input
                   type="text"
                   placeholder="Search workflows..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="input pl-10"
+                  className="input-dark pl-10"
                 />
               </div>
             </form>
 
             {/* Status Filter */}
             <div className="flex items-center gap-2">
-              <FunnelIcon className="h-5 w-5 text-gray-400" />
+              <FunnelIcon className="h-5 w-5 text-slate-500" />
               <select
                 value={status}
                 onChange={(e) => handleStatusFilter(e.target.value)}
-                className="input w-40"
+                className="input-dark w-40"
               >
                 {statuses.map((s) => (
                   <option key={s} value={s}>
@@ -176,11 +215,11 @@ export function WorkflowsPage() {
             {/* Customer Filter - Only for Approvers/Managers/Admins */}
             {canFilterByCustomer && (
               <div className="flex items-center gap-2">
-                <UserIcon className="h-5 w-5 text-gray-400" />
+                <UserIcon className="h-5 w-5 text-slate-500" />
                 <select
                   value={customerId}
                   onChange={(e) => handleCustomerFilter(e.target.value)}
-                  className="input w-48"
+                  className="input-dark w-48"
                 >
                   <option value="">All Customers</option>
                   {customers.map((c) => (
@@ -196,94 +235,78 @@ export function WorkflowsPage() {
       </div>
 
       {/* Workflows Table */}
-      <div className="card">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+      <div className="glass-card overflow-hidden">
+        <div className="overflow-x-auto dark-scrollbar">
+          <table className="table-dark">
+            <thead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Title
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  State
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Due Date
-                </th>
-                <th className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
+                <th>Title</th>
+                <th>State</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Due Date</th>
+                <th className="text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody>
               {isLoading ? (
                 // Loading skeleton
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="animate-pulse h-4 bg-gray-200 rounded w-48" />
+                    <td>
+                      <div className="animate-pulse h-4 bg-white/10 rounded w-48" />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="animate-pulse h-6 bg-gray-200 rounded w-24" />
+                    <td>
+                      <div className="animate-pulse h-6 bg-white/10 rounded w-24" />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="animate-pulse h-6 bg-gray-200 rounded w-20" />
+                    <td>
+                      <div className="animate-pulse h-6 bg-white/10 rounded w-20" />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="animate-pulse h-4 bg-gray-200 rounded w-24" />
+                    <td>
+                      <div className="animate-pulse h-4 bg-white/10 rounded w-24" />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="animate-pulse h-4 bg-gray-200 rounded w-24" />
+                    <td>
+                      <div className="animate-pulse h-4 bg-white/10 rounded w-24" />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap" />
+                    <td />
                   </tr>
                 ))
               ) : data?.instances && data.instances.length > 0 ? (
                 data.instances.map((workflow) => (
-                  <tr key={workflow.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={workflow.id}>
+                    <td>
                       <Link
                         to={`/app/workflows/${workflow.id}`}
-                        className="text-sm font-medium text-gray-900 hover:text-enterprise-primary"
+                        className="text-sm font-medium text-white hover:text-red-400 transition-colors"
                       >
                         {workflow.title}
                       </Link>
                       {workflow.description && (
-                        <p className="text-sm text-gray-500 truncate max-w-xs">
+                        <p className="text-sm text-slate-500 truncate max-w-xs">
                           {workflow.description}
                         </p>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStateColor(
-                          workflow.currentState
-                        )}`}
-                      >
+                    <td>
+                      <span className={getDarkStateColor(workflow.currentState)}>
                         {getStateName(workflow.currentState)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={getStatusColor(workflow.status)}>
+                    <td>
+                      <span className={getDarkStatusColor(workflow.status)}>
                         {workflow.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="text-slate-400">
                       {formatDate(workflow.createdAt)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="text-slate-400">
                       {workflow.dueDate ? formatDate(workflow.dueDate) : '—'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="text-right">
                       <Link
                         to={`/app/workflows/${workflow.id}`}
-                        className="text-enterprise-primary hover:text-blue-800"
+                        className="text-sm font-medium text-red-400 hover:text-red-300 transition-colors"
                       >
                         View
                       </Link>
@@ -292,11 +315,11 @@ export function WorkflowsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
                     No workflows found.{' '}
                     <Link
                       to="/app/workflows/new"
-                      className="text-enterprise-primary hover:underline"
+                      className="text-red-400 hover:text-red-300"
                     >
                       Create your first workflow
                     </Link>
@@ -309,8 +332,8 @@ export function WorkflowsPage() {
 
         {/* Pagination */}
         {data?.pagination && data.pagination.totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-            <div className="text-sm text-gray-500">
+          <div className="px-6 py-4 border-t border-white/5 flex items-center justify-between">
+            <div className="text-sm text-slate-500">
               Showing {(page - 1) * 10 + 1} to{' '}
               {Math.min(page * 10, data.pagination.total)} of{' '}
               {data.pagination.total} results
@@ -319,14 +342,14 @@ export function WorkflowsPage() {
               <button
                 onClick={() => handlePageChange(page - 1)}
                 disabled={page === 1}
-                className="btn-secondary btn-sm"
+                className="btn-dark-secondary text-sm"
               >
                 Previous
               </button>
               <button
                 onClick={() => handlePageChange(page + 1)}
                 disabled={page >= data.pagination.totalPages}
-                className="btn-secondary btn-sm"
+                className="btn-dark-secondary text-sm"
               >
                 Next
               </button>

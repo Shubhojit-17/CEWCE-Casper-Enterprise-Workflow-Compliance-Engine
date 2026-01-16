@@ -1,5 +1,5 @@
 // =============================================================================
-// Create Workflow Page
+// Create Workflow Page - Luminous Dark Cyberpunk Enterprise Theme
 // =============================================================================
 
 import { useState } from 'react';
@@ -85,13 +85,13 @@ export function CreateWorkflowPage() {
       <div className="flex items-center gap-4">
         <button
           onClick={() => navigate('/workflows')}
-          className="p-2 hover:bg-gray-100 rounded-lg"
+          className="p-2 hover:bg-white/5 rounded-lg transition-colors"
         >
-          <ArrowLeftIcon className="h-5 w-5 text-gray-500" />
+          <ArrowLeftIcon className="h-5 w-5 text-slate-400" />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Create New Workflow</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-white">Create New Workflow</h1>
+          <p className="mt-1 text-sm text-slate-400">
             Start a new workflow instance from a template
           </p>
         </div>
@@ -99,16 +99,16 @@ export function CreateWorkflowPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Template Selection */}
-        <div className="card">
-          <div className="card-header">
-            <h2 className="text-lg font-medium text-gray-900">Select Template</h2>
+        <div className="glass-card">
+          <div className="glass-card-header">
+            <h2 className="text-lg font-medium text-white">Select Template</h2>
           </div>
-          <div className="card-body">
+          <div className="glass-card-body">
             {templatesLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="animate-pulse">
-                    <div className="h-32 bg-gray-200 rounded-lg" />
+                    <div className="h-32 bg-white/10 rounded-lg" />
                   </div>
                 ))}
               </div>
@@ -121,22 +121,22 @@ export function CreateWorkflowPage() {
                     onClick={() => setSelectedTemplate(template)}
                     className={`p-4 rounded-lg border-2 text-left transition-colors ${
                       selectedTemplate?.id === template.id
-                        ? 'border-enterprise-primary bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-red-500 bg-red-500/10'
+                        : 'border-white/10 hover:border-white/20 bg-white/5'
                     }`}
                   >
-                    <h3 className="font-medium text-gray-900">{template.name}</h3>
+                    <h3 className="font-medium text-white">{template.name}</h3>
                     {template.description && (
-                      <p className="mt-1 text-sm text-gray-500 line-clamp-2">
+                      <p className="mt-1 text-sm text-slate-400 line-clamp-2">
                         {template.description}
                       </p>
                     )}
                     <div className="mt-2 flex items-center gap-2">
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-slate-500">
                         Version {template.version}
                       </span>
-                      <span className="text-xs text-gray-400">•</span>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-slate-500">•</span>
+                      <span className="text-xs text-slate-500">
                         {template.states?.length || 0} states
                       </span>
                     </div>
@@ -144,10 +144,10 @@ export function CreateWorkflowPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-slate-400">
                 <p>No published templates available.</p>
                 <p className="text-sm mt-1">
-                  Go to <a href="/templates" className="text-enterprise-primary hover:underline">Templates</a> to create and publish a template first.
+                  Go to <a href="/templates" className="text-red-400 hover:text-red-300 hover:underline">Templates</a> to create and publish a template first.
                 </p>
               </div>
             )}
@@ -156,35 +156,35 @@ export function CreateWorkflowPage() {
 
         {/* Workflow Details */}
         {selectedTemplate && (
-          <div className="card">
-            <div className="card-header">
-              <h2 className="text-lg font-medium text-gray-900">Workflow Details</h2>
+          <div className="glass-card">
+            <div className="glass-card-header">
+              <h2 className="text-lg font-medium text-white">Workflow Details</h2>
             </div>
-            <div className="card-body space-y-4">
+            <div className="glass-card-body space-y-4">
               <div>
-                <label htmlFor="title" className="label">
+                <label htmlFor="title" className="label-dark">
                   Title <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="title"
                   type="text"
-                  className="input"
+                  className="input-dark"
                   placeholder="Enter workflow title"
                   {...register('title', { required: 'Title is required' })}
                 />
                 {errors.title && (
-                  <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
+                  <p className="mt-1 text-sm text-red-400">{errors.title.message}</p>
                 )}
               </div>
 
               <div>
-                <label htmlFor="description" className="label">
+                <label htmlFor="description" className="label-dark">
                   Description
                 </label>
                 <textarea
                   id="description"
                   rows={3}
-                  className="input"
+                  className="input-dark"
                   placeholder="Enter workflow description (optional)"
                   {...register('description')}
                 />
@@ -192,7 +192,7 @@ export function CreateWorkflowPage() {
 
               {/* Customer Assignment */}
               <div>
-                <label htmlFor="assignedCustomerId" className="label">
+                <label htmlFor="assignedCustomerId" className="label-dark">
                   <span className="flex items-center gap-2">
                     <UserIcon className="h-4 w-4" />
                     Assign to Customer
@@ -200,7 +200,7 @@ export function CreateWorkflowPage() {
                 </label>
                 <select
                   id="assignedCustomerId"
-                  className="input"
+                  className="input-dark"
                   value={selectedCustomerId || ''}
                   onChange={(e) => setSelectedCustomerId(e.target.value || null)}
                 >
@@ -211,14 +211,14 @@ export function CreateWorkflowPage() {
                     </option>
                   ))}
                 </select>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-slate-500">
                   If assigned, the customer must confirm before the workflow proceeds to blockchain.
                 </p>
               </div>
 
               {/* Template Preview */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <h3 className="text-sm font-medium text-gray-900 mb-4">
+              <div className="mt-6 pt-6 border-t border-white/10">
+                <h3 className="text-sm font-medium text-white mb-4">
                   Template: {selectedTemplate.name}
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -230,21 +230,21 @@ export function CreateWorkflowPage() {
                       <span
                         className={`px-2 py-1 rounded ${
                           state.isInitial
-                            ? 'bg-blue-100 text-blue-800'
+                            ? 'bg-blue-500/20 text-blue-400'
                             : state.isTerminal
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
+                            ? 'bg-cyan-500/20 text-cyan-400'
+                            : 'bg-white/10 text-slate-300'
                         }`}
                       >
                         {state.name}
                       </span>
                       {idx < selectedTemplate.states.length - 1 && (
-                        <span className="text-gray-400">→</span>
+                        <span className="text-slate-600">→</span>
                       )}
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 text-sm text-gray-500">
+                <div className="mt-4 text-sm text-slate-400">
                   <p>SLA: {selectedTemplate.slaDays} days</p>
                   <p>Escalation: {selectedTemplate.escalationDays} days</p>
                 </div>
@@ -258,14 +258,14 @@ export function CreateWorkflowPage() {
           <button
             type="button"
             onClick={() => navigate('/app/workflows')}
-            className="btn-secondary"
+            className="btn-dark-secondary"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={!selectedTemplate || createMutation.isPending}
-            className="btn-primary"
+            className="btn-dark-primary"
           >
             {createMutation.isPending ? 'Creating...' : 'Create Workflow'}
           </button>
