@@ -13,16 +13,19 @@
  * 
  * Route: /narrative-test
  */
-import { Header, HeroSection, ScrollNarrative, ComplianceExplainer, VerificationSimulator, CTASection, Footer } from './components';
+import { FixedBackground, Header, HeroSection, ScrollNarrative, ComplianceExplainer, VerificationSimulator, CTASection, Footer } from './components';
 
 export function NarrativeLabPage() {
   return (
-    <div className="min-h-screen bg-black text-white overflow-x-hidden">
+    <div className="min-h-screen bg-transparent text-white overflow-x-hidden relative">
+      {/* Fixed Animated Background - stays constant during scroll */}
+      <FixedBackground />
+      
       {/* Fixed Header */}
       <Header />
 
-      {/* Main Content */}
-      <main>
+      {/* Main Content - z-index above background */}
+      <main className="relative z-[1]">
         {/* Hero Section - Minimal */}
         <HeroSection />
 

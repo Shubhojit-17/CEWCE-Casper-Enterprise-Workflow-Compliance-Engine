@@ -2,6 +2,7 @@
  * Narrative Lab - Components Index
  * Export all components for easy imports
  */
+export { FixedBackground } from './FixedBackground';
 export { Header } from './Header';
 export { HeroSection } from './HeroSection';
 export { ScrollNarrative } from './ScrollNarrative';

@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 
 export function ComplianceExplainer() {
   return (
-    <section className="relative py-32 px-6 bg-gradient-to-b from-black via-gray-950 to-black overflow-hidden">
+    <section className="relative py-32 px-6 bg-gradient-to-b from-transparent via-black/40 to-transparent overflow-hidden">
       {/* Background grid */}
       <div 
         className="absolute inset-0 opacity-[0.02]"

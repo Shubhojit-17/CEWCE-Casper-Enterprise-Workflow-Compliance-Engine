@@ -44,7 +44,7 @@ export function VerificationSimulator() {
   };
 
   return (
-    <section className="relative py-32 px-6 bg-black overflow-hidden">
+    <section className="relative py-32 px-6 bg-black/60 backdrop-blur-sm overflow-hidden">
       {/* Subtle background */}
       <div className="absolute inset-0 bg-gradient-to-t from-gray-950 to-black" />
 

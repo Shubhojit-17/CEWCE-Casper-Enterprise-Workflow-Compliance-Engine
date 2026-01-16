@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 
 export function CTASection() {
   return (
-    <section className="relative py-32 px-6 bg-gradient-to-b from-black to-gray-950 overflow-hidden">
+    <section className="relative py-32 px-6 bg-gradient-to-b from-transparent via-black/50 to-black/70 overflow-hidden">
       {/* Background accent */}
       <div className="absolute inset-0">
         <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-red-500/5 rounded-full blur-3xl" />

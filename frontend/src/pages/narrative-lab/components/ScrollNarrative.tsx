@@ -54,7 +54,7 @@ export function ScrollNarrative() {
   }, []);
 
   return (
-    <section className="relative bg-black min-h-screen">
+    <section className="relative bg-transparent min-h-screen">
       {/* Section header */}
       <div className="relative pt-32 pb-16 px-6">
         <div className="max-w-7xl mx-auto">
