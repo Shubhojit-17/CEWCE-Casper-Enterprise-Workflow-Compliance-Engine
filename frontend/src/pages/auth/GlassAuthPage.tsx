@@ -302,48 +302,67 @@ export function GlassAuthPage() {
       <div className="relative z-10 min-h-screen flex flex-col lg:flex-row">
         
         {/* === LEFT COLUMN: Engine Core Narrative (40%) === */}
-        <div className="hidden lg:flex lg:w-[40%] xl:w-[42%] flex-col items-center justify-center px-8 xl:px-16 py-20">
-          <div className="max-w-md w-full space-y-12">
-            
-            {/* Floating Glass Prism Block */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative"
-            >
-              <FloatingPrism />
-            </motion.div>
+        <div className="hidden lg:flex lg:w-[40%] xl:w-[42%] flex-col items-center justify-center px-8 xl:px-16 py-20 relative">
+          {/* Column Red Ambient Light */}
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse 80% 60% at 30% 50%, rgba(220, 38, 38, 0.08), transparent 70%)',
+            }}
+          />
+          
+          {/* Glass Column Wrapper */}
+          <div 
+            className="relative max-w-md w-full h-full flex flex-col items-center justify-center py-8 px-6 rounded-3xl"
+            style={{
+              background: 'rgba(255, 255, 255, 0.02)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255, 255, 255, 0.05)',
+            }}
+          >
+            {/* Content Container */}
+            <div className="w-full space-y-10">
+              
+              {/* Floating 3D Glass Engine Core */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+                className="relative"
+                style={{ perspective: '1200px' }}
+              >
+                <GlassEngineCore />
+              </motion.div>
 
-            {/* Trust Indicators */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="space-y-5"
-            >
-              <TrustIndicator 
-                icon={<DocumentCheckIcon className="w-5 h-5" />}
-                text="Immutable Audit Trails"
-              />
-              <TrustIndicator 
-                icon={<BoltIcon className="w-5 h-5" />}
-                text="Off-Chain Efficiency"
-              />
-              <TrustIndicator 
-                icon={<LinkIcon className="w-5 h-5" />}
-                text="On-Chain Finality"
-              />
-            </motion.div>
+              {/* Glowing Value Propositions */}
+              <div className="space-y-4">
+                <TrustIndicator 
+                  icon={<DocumentCheckIcon className="w-5 h-5" />}
+                  text="Immutable Audit Trails"
+                  delay={0.3}
+                />
+                <TrustIndicator 
+                  icon={<BoltIcon className="w-5 h-5" />}
+                  text="Off-Chain Efficiency"
+                  delay={0.45}
+                />
+                <TrustIndicator 
+                  icon={<LinkIcon className="w-5 h-5" />}
+                  text="On-Chain Finality"
+                  delay={0.6}
+                />
+              </div>
 
-            {/* Simulated Network Pulse */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.6 }}
-            >
-              <NetworkPulse />
-            </motion.div>
+              {/* Real-Time Network Pulse Widget */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.75 }}
+              >
+                <NetworkPulseWidget />
+              </motion.div>
+            </div>
           </div>
         </div>
 
@@ -593,122 +612,231 @@ export function GlassAuthPage() {
 }
 
 // =============================================================================
-// Floating Glass Prism Component
+// Glass Engine Core Component (3D Rotating Prism)
 // =============================================================================
 
-function FloatingPrism() {
+function GlassEngineCore() {
   return (
-    <motion.div
-      animate={{ 
-        rotateY: [0, 5, -5, 0],
-        rotateX: [0, -3, 3, 0],
-        y: [0, -8, 0],
-      }}
-      transition={{ 
-        duration: 8, 
-        repeat: Infinity, 
-        ease: 'easeInOut' 
-      }}
-      className="relative mx-auto w-48 h-48 xl:w-56 xl:h-56"
-      style={{ perspective: '1000px' }}
-    >
-      {/* Outer Glow */}
-      <div 
+    <div className="relative mx-auto w-56 h-56 xl:w-64 xl:h-64" style={{ perspective: '1200px' }}>
+      {/* Deep Ambient Glow */}
+      <motion.div 
+        animate={{ 
+          opacity: [0.4, 0.6, 0.4],
+          scale: [1, 1.05, 1],
+        }}
+        transition={{ 
+          duration: 4, 
+          repeat: Infinity, 
+          ease: 'easeInOut' 
+        }}
         className="absolute inset-0 rounded-3xl"
         style={{
-          background: 'radial-gradient(circle at center, rgba(220, 38, 38, 0.2), transparent 70%)',
-          filter: 'blur(30px)',
+          background: 'radial-gradient(circle at center, rgba(220, 38, 38, 0.35), transparent 60%)',
+          filter: 'blur(40px)',
         }}
       />
       
-      {/* Glass Cube */}
-      <div
-        className="absolute inset-4 rounded-2xl"
-        style={{
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.15)',
-          boxShadow: `
-            0 20px 40px -10px rgba(0, 0, 0, 0.5),
-            inset 0 1px 0 rgba(255, 255, 255, 0.1),
-            inset 0 -1px 0 rgba(0, 0, 0, 0.2)
-          `,
+      {/* 3D Glass Cube Container */}
+      <motion.div
+        animate={{ 
+          rotateY: [0, 360],
+        }}
+        transition={{ 
+          duration: 25, 
+          repeat: Infinity, 
+          ease: 'linear' 
+        }}
+        className="absolute inset-0"
+        style={{ 
+          transformStyle: 'preserve-3d',
         }}
       >
-        {/* Inner Content - Pulsing Casper Logo */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <motion.div
+        {/* Main Glass Cube with Float Animation */}
+        <motion.div
+          animate={{ 
+            y: [0, -15, 0],
+            rotateX: [0, 3, -3, 0],
+          }}
+          transition={{ 
+            duration: 6, 
+            repeat: Infinity, 
+            ease: 'easeInOut' 
+          }}
+          className="absolute inset-4 rounded-2xl"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 50%, rgba(255, 255, 255, 0.08) 100%)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: `
+              0 25px 50px -12px rgba(0, 0, 0, 0.6),
+              inset 0 0 60px rgba(220, 38, 38, 0.15),
+              inset 0 2px 0 rgba(255, 255, 255, 0.15),
+              inset 0 -2px 0 rgba(0, 0, 0, 0.3)
+            `,
+            transformStyle: 'preserve-3d',
+          }}
+        >
+          {/* Top Edge Highlight */}
+          <div 
+            className="absolute top-0 left-2 right-2 h-px"
+            style={{
+              background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent)',
+            }}
+          />
+          
+          {/* Left Edge Highlight */}
+          <div 
+            className="absolute top-2 bottom-2 left-0 w-px"
+            style={{
+              background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent)',
+            }}
+          />
+          
+          {/* Inner Red Glow */}
+          <div 
+            className="absolute inset-0 rounded-2xl"
+            style={{
+              background: 'radial-gradient(circle at 30% 30%, rgba(220, 38, 38, 0.2), transparent 60%)',
+            }}
+          />
+
+          {/* Holographic Casper Logo */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <motion.div
+              animate={{ 
+                scale: [1, 1.08, 1],
+                opacity: [0.85, 1, 0.85],
+              }}
+              transition={{ 
+                duration: 3, 
+                repeat: Infinity, 
+                ease: 'easeInOut' 
+              }}
+              className="relative"
+              style={{
+                filter: 'drop-shadow(0 0 20px rgba(220, 38, 38, 0.8)) drop-shadow(0 0 40px rgba(220, 38, 38, 0.4))',
+              }}
+            >
+              {/* Glowing "C" Logo */}
+              <div 
+                className="w-24 h-24 xl:w-28 xl:h-28 rounded-2xl flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 50%, #7f1d1d 100%)',
+                  boxShadow: `
+                    0 0 30px rgba(220, 38, 38, 0.6),
+                    inset 0 2px 4px rgba(255, 255, 255, 0.2),
+                    inset 0 -2px 4px rgba(0, 0, 0, 0.3)
+                  `,
+                }}
+              >
+                <span 
+                  className="text-white font-bold text-5xl xl:text-6xl"
+                  style={{
+                    textShadow: '0 0 20px rgba(255, 255, 255, 0.5)',
+                  }}
+                >
+                  C
+                </span>
+              </div>
+              
+              {/* Verification Badge */}
+              <motion.div
+                animate={{ 
+                  opacity: [0.7, 1, 0.7],
+                  scale: [1, 1.1, 1],
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="absolute -bottom-2 -right-2 w-9 h-9 rounded-full flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                  boxShadow: '0 0 20px rgba(34, 197, 94, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.3)',
+                  border: '2px solid rgba(0, 0, 0, 0.3)',
+                }}
+              >
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </motion.div>
+            </motion.div>
+          </div>
+
+          {/* Diagonal Refraction Line */}
+          <motion.div 
             animate={{ 
-              scale: [1, 1.05, 1],
-              opacity: [0.8, 1, 0.8],
+              opacity: [0.15, 0.35, 0.15],
             }}
             transition={{ 
-              duration: 3, 
+              duration: 4, 
               repeat: Infinity, 
               ease: 'easeInOut' 
             }}
-            className="relative"
-          >
-            {/* Casper "C" Logo */}
-            <div className="w-20 h-20 xl:w-24 xl:h-24 rounded-2xl bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center shadow-xl shadow-red-600/30">
-              <span className="text-white font-bold text-4xl xl:text-5xl">C</span>
-            </div>
-            
-            {/* Verification Badge Overlay */}
-            <motion.div
-              animate={{ opacity: [0.6, 1, 0.6] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-green-500/90 flex items-center justify-center border-2 border-black/50"
-            >
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-            </motion.div>
-          </motion.div>
-        </div>
-
-        {/* Refraction Lines */}
-        <div 
-          className="absolute inset-0 rounded-2xl overflow-hidden opacity-30"
-          style={{
-            background: 'linear-gradient(135deg, transparent 40%, rgba(255, 255, 255, 0.1) 50%, transparent 60%)',
-          }}
-        />
-      </div>
-    </motion.div>
-  );
-}
-
-// =============================================================================
-// Trust Indicator Component
-// =============================================================================
-
-interface TrustIndicatorProps {
-  icon: React.ReactNode;
-  text: string;
-}
-
-function TrustIndicator({ icon, text }: TrustIndicatorProps) {
-  return (
-    <div className="flex items-center gap-4">
-      <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
-        {icon}
-      </div>
-      <span 
-        className="text-white font-medium text-base tracking-wide"
-        style={{ textShadow: '0 0 20px rgba(255, 255, 255, 0.2)' }}
-      >
-        {text}
-      </span>
+            className="absolute inset-0 rounded-2xl overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, transparent 30%, rgba(255, 255, 255, 0.15) 50%, transparent 70%)',
+            }}
+          />
+        </motion.div>
+      </motion.div>
     </div>
   );
 }
 
 // =============================================================================
-// Network Pulse Component (Simulated Activity)
+// Trust Indicator Component (Glowing Value Propositions)
 // =============================================================================
 
-function NetworkPulse() {
+interface TrustIndicatorProps {
+  icon: React.ReactNode;
+  text: string;
+  delay?: number;
+}
+
+function TrustIndicator({ icon, text, delay = 0 }: TrustIndicatorProps) {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.5, delay }}
+      className="flex items-center gap-4 group"
+    >
+      {/* Glowing Icon Container */}
+      <div 
+        className="w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+        style={{
+          background: 'linear-gradient(135deg, rgba(220, 38, 38, 0.2) 0%, rgba(220, 38, 38, 0.1) 100%)',
+          border: '1px solid rgba(220, 38, 38, 0.3)',
+          boxShadow: '0 0 20px rgba(220, 38, 38, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+        }}
+      >
+        <div 
+          className="text-red-400"
+          style={{
+            filter: 'drop-shadow(0 0 6px rgba(220, 38, 38, 0.8))',
+          }}
+        >
+          {icon}
+        </div>
+      </div>
+      
+      {/* Glowing Text */}
+      <span 
+        className="text-white font-medium text-base tracking-wide"
+        style={{ 
+          textShadow: '0 0 20px rgba(255, 255, 255, 0.25), 0 0 40px rgba(255, 255, 255, 0.1)',
+        }}
+      >
+        {text}
+      </span>
+    </motion.div>
+  );
+}
+
+// =============================================================================
+// Network Pulse Widget (Real-Time Activity Simulator)
+// =============================================================================
+
+function NetworkPulseWidget() {
   const [currentMessage, setCurrentMessage] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
 
@@ -725,34 +853,59 @@ function NetworkPulse() {
   }, []);
 
   return (
-    <div className="relative">
-      {/* Label */}
+    <div 
+      className="relative rounded-xl px-4 py-3"
+      style={{
+        background: 'rgba(0, 0, 0, 0.4)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        border: '1px solid rgba(220, 38, 38, 0.25)',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+      }}
+    >
+      {/* Header Row */}
       <div className="flex items-center gap-2 mb-2">
-        <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+        {/* Pulsing Red Dot */}
+        <span className="relative flex h-2.5 w-2.5">
+          <span 
+            className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping"
+            style={{ backgroundColor: 'rgba(220, 38, 38, 0.8)' }}
+          />
+          <span 
+            className="relative inline-flex h-2.5 w-2.5 rounded-full"
+            style={{ 
+              backgroundColor: '#dc2626',
+              boxShadow: '0 0 8px rgba(220, 38, 38, 0.8)',
+            }}
+          />
         </span>
-        <span className="text-xs text-slate-500 uppercase tracking-wider">
+        <span 
+          className="text-[10px] text-slate-500 uppercase tracking-[0.15em] font-medium"
+        >
           Simulated Network Activity
         </span>
       </div>
       
-      {/* Message */}
-      <AnimatePresence mode="wait">
-        {isVisible && (
-          <motion.div
-            key={currentMessage}
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            transition={{ duration: 0.3 }}
-            className="text-sm text-slate-400 pl-4 border-l border-red-500/30"
-            style={{ textShadow: '0 0 10px rgba(220, 38, 38, 0.3)' }}
-          >
-            {NETWORK_MESSAGES[currentMessage]}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Rotating Message */}
+      <div className="min-h-[20px]">
+        <AnimatePresence mode="wait">
+          {isVisible && (
+            <motion.div
+              key={currentMessage}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3 }}
+              className="text-sm text-white font-medium"
+              style={{ 
+                textShadow: '0 0 15px rgba(220, 38, 38, 0.4)',
+              }}
+            >
+              {NETWORK_MESSAGES[currentMessage]}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
