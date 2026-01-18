@@ -24,25 +24,29 @@ export function DemoOverlay(): React.ReactElement | null {
   const demo = useDemoContext();
   const [narrativeKey, setNarrativeKey] = useState(0);
   
+  // Get state safely (may be null if demo not active)
+  const state = demo?.state;
+  const currentStepIndex = state?.currentStepIndex ?? 0;
+
+  // Map current step index to story sequence - MUST be called before any returns
+  const currentSequence = useMemo(() => {
+    if (currentStepIndex >= STORY_SEQUENCES.length) {
+      return STORY_SEQUENCES[STORY_SEQUENCES.length - 1];
+    }
+    return STORY_SEQUENCES[currentStepIndex] || STORY_SEQUENCES[0];
+  }, [currentStepIndex]);
+
+  // Trigger re-render of NarrativeBox on step change - MUST be called before any returns
+  useEffect(() => {
+    setNarrativeKey(prev => prev + 1);
+  }, [currentStepIndex]);
+
   // Don't render if demo is not enabled or not active
-  if (!DEMO_ENABLED || !demo || !demo.state.isActive) {
+  if (!DEMO_ENABLED || !demo || !state?.isActive) {
     return null;
   }
 
-  const { state, nextStep, skipDemo } = demo;
-
-  // Map current step index to story sequence
-  const currentSequence = useMemo(() => {
-    if (state.currentStepIndex >= STORY_SEQUENCES.length) {
-      return STORY_SEQUENCES[STORY_SEQUENCES.length - 1];
-    }
-    return STORY_SEQUENCES[state.currentStepIndex] || STORY_SEQUENCES[0];
-  }, [state.currentStepIndex]);
-
-  // Trigger re-render of NarrativeBox on step change
-  useEffect(() => {
-    setNarrativeKey(prev => prev + 1);
-  }, [state.currentStepIndex]);
+  const { nextStep, skipDemo } = demo;
 
   // Determine if we should show the highlight
   const showHighlight = Boolean(
