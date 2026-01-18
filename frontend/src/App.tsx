@@ -4,7 +4,7 @@ import { useAuthStore } from './stores/auth';
 import { useWalletStore } from './stores/wallet';
 
 // Demo Mode (TESTNET ONLY - safe to remove for mainnet)
-import { ConditionalDemoProvider, DemoOverlay, DEMO_ENABLED } from './demo';
+import { ConditionalDemoProvider, DemoOverlay, DemoPage, DEMO_ENABLED } from './demo';
 
 // Layouts
 import { DashboardLayout } from './layouts/DashboardLayout';
@@ -112,6 +112,11 @@ function App() {
         />
         <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+
+        {/* Demo Entry Page (TESTNET ONLY) */}
+        {DEMO_ENABLED && (
+          <Route path="/demo" element={<DemoPage />} />
+        )}
 
         {/* Public Verification Page (no auth required) */}
         <Route path="/verify" element={<VerifyCompliancePage />} />

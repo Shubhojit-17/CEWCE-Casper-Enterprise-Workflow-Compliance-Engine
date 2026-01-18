@@ -7,8 +7,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { DemoState, DemoContextValue } from './types';
-import { DEMO_STEPS } from './DemoSteps';
+import type { DemoState, DemoContextValue, DemoStep } from './types';
+import { STORY_SEQUENCES, TOTAL_SEQUENCES } from './StorySequences';
 import { DEMO_ENABLED, DEMO_STATE_KEY, DEMO_FULL_STATE_KEY, DEMO_CONFIG } from './demoConfig';
 import { requestDemoAuth, demoLogout } from './DemoRoleSwitcher';
 
@@ -109,21 +109,33 @@ export function DemoProvider({ children }: DemoProviderProps): React.ReactElemen
   const [state, setState] = useState<DemoState>(() => loadDemoState());
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // Current step based on index
-  const currentStep = useMemo(() => {
+  // Current step based on index (convert StorySequence to legacy DemoStep format for compatibility)
+  const currentStep = useMemo((): DemoStep | null => {
     if (!state.isActive) return null;
-    return DEMO_STEPS[state.currentStepIndex] || null;
+    const seq = STORY_SEQUENCES[state.currentStepIndex];
+    if (!seq) return null;
+    // Map StorySequence to DemoStep for backward compatibility
+    return {
+      id: seq.id as any,
+      role: seq.role || null,
+      title: seq.title,
+      description: seq.narrative.join('\n\n'),
+      showSkip: seq.showSkip,
+      nextButtonText: seq.actionText,
+      action: seq.action === 'click' ? 'wait-for-action' : seq.action === 'auto' ? 'navigate' : undefined,
+      targetSelector: seq.targetSelector,
+    };
   }, [state.isActive, state.currentStepIndex]);
 
   // Progress percentage
   const progress = useMemo(() => {
     if (!state.isActive) return 0;
-    return Math.round((state.currentStepIndex / (DEMO_STEPS.length - 1)) * 100);
+    return Math.round((state.currentStepIndex / (TOTAL_SEQUENCES - 1)) * 100);
   }, [state.isActive, state.currentStepIndex]);
 
   // Is last step
   const isLastStep = useMemo(() => {
-    return state.currentStepIndex >= DEMO_STEPS.length - 1;
+    return state.currentStepIndex >= TOTAL_SEQUENCES - 1;
   }, [state.currentStepIndex]);
 
   // Persist state changes
@@ -158,7 +170,7 @@ export function DemoProvider({ children }: DemoProviderProps): React.ReactElemen
       // Clear demo state
       setState({
         ...INITIAL_STATE,
-        hasCompletedBefore: state.hasCompletedBefore || state.currentStepIndex >= DEMO_STEPS.length - 1,
+        hasCompletedBefore: state.hasCompletedBefore || state.currentStepIndex >= TOTAL_SEQUENCES - 1,
       });
       clearDemoState();
       
@@ -199,58 +211,39 @@ export function DemoProvider({ children }: DemoProviderProps): React.ReactElemen
     const nextIndex = state.currentStepIndex + 1;
     
     // Check if demo is complete
-    if (nextIndex >= DEMO_STEPS.length) {
+    if (nextIndex >= TOTAL_SEQUENCES) {
       await exitDemo();
       return;
     }
     
-    const nextStepData = DEMO_STEPS[nextIndex];
+    const nextSequence = STORY_SEQUENCES[nextIndex];
     setIsTransitioning(true);
     
     try {
-      // Handle auto-login actions
-      if (nextStepData.action === 'auto-login' && nextStepData.role) {
+      // Handle role transitions
+      if (nextSequence.role && nextSequence.role !== state.currentRole) {
         // Wait a moment for UI to update
         await new Promise(resolve => setTimeout(resolve, DEMO_CONFIG.autoLoginDelay));
         
-        // Perform demo login
-        await requestDemoAuth(nextStepData.role);
+        // Perform demo login for new role
+        await requestDemoAuth(nextSequence.role);
         
         // Update state with new role
         setState(prev => ({
           ...prev,
           currentStepIndex: nextIndex,
-          currentRole: nextStepData.role,
+          currentRole: nextSequence.role ?? prev.currentRole,
         }));
       }
-      // Handle auto-logout actions (role transition)
-      else if (nextStepData.action === 'auto-logout') {
-        await demoLogout();
-        
-        setState(prev => ({
-          ...prev,
-          currentStepIndex: nextIndex,
-          // Don't clear role yet - it's shown during transition
-        }));
-      }
-      // Handle navigation actions
-      else if (nextStepData.action === 'navigate' && nextStepData.targetPath) {
-        navigate(nextStepData.targetPath);
-        
+      // Handle auto actions (no user interaction needed)
+      else if (nextSequence.action === 'auto') {
+        // Auto-advance after a brief delay
         await new Promise(resolve => setTimeout(resolve, DEMO_CONFIG.navigationDelay));
         
         setState(prev => ({
           ...prev,
           currentStepIndex: nextIndex,
-          currentRole: nextStepData.role || prev.currentRole,
-        }));
-      }
-      // Handle completion
-      else if (nextStepData.action === 'complete') {
-        setState(prev => ({
-          ...prev,
-          currentStepIndex: nextIndex,
-          hasCompletedBefore: true,
+          currentRole: nextSequence.role ?? prev.currentRole,
         }));
       }
       // Default: just advance
@@ -258,7 +251,7 @@ export function DemoProvider({ children }: DemoProviderProps): React.ReactElemen
         setState(prev => ({
           ...prev,
           currentStepIndex: nextIndex,
-          currentRole: nextStepData.role || prev.currentRole,
+          currentRole: nextSequence.role ?? prev.currentRole,
         }));
       }
     } catch (error) {

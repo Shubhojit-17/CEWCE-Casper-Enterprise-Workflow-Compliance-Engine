@@ -31,7 +31,19 @@ export {
   useRequiredDemoContext 
 } from './DemoProvider';
 
-// Steps
+// Story Sequences (new story-driven system)
+export { 
+  STORY_SEQUENCES, 
+  TOTAL_SEQUENCES,
+  getSequenceById, 
+  getSequenceByLabel,
+  getInitialSequence,
+  getSequenceIndex,
+  getNextSequence 
+} from './StorySequences';
+export type { StorySequence } from './StorySequences';
+
+// Legacy Steps (kept for compatibility)
 export { DEMO_STEPS, getStepById, getStepIndex, getNextStep, isTransitionStep } from './DemoSteps';
 
 // Role switcher
@@ -47,3 +59,5 @@ export {
 export { DemoOverlay } from './DemoOverlay';
 export { DemoHighlight } from './DemoHighlight';
 export { DemoRoleBadge, DemoRoleBadgeCompact } from './DemoRoleBadge';
+export { NarrativeBox } from './NarrativeBox';
+export { DemoPage } from './DemoPage';

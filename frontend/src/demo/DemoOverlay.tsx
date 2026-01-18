@@ -1,217 +1,116 @@
 // =============================================================================
 // Demo Overlay Component - TESTNET ONLY
 // =============================================================================
-// Fullscreen glassmorphic overlay that guides users through the demo.
+// Fullscreen overlay that hosts the NarrativeBox story-driven guide.
 // All demo code is isolated in src/demo/ and can be safely removed for mainnet.
 // =============================================================================
 
-import React from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  XMarkIcon,
-  ArrowRightIcon,
-  ForwardIcon,
-  CheckCircleIcon,
-  ArrowPathIcon,
-  BeakerIcon,
-  ShieldCheckIcon,
-  UserIcon,
-  ClipboardDocumentCheckIcon,
-} from '@heroicons/react/24/outline';
 import { useDemoContext } from './DemoProvider';
 import { DemoHighlight } from './DemoHighlight';
 import { DemoRoleBadge } from './DemoRoleBadge';
+import { NarrativeBox } from './NarrativeBox';
 import { DEMO_CONFIG, DEMO_ENABLED } from './demoConfig';
-import { getDemoRoleDisplayName } from './DemoRoleSwitcher';
-
-/**
- * Get icon for current step
- */
-function getStepIcon(stepId: string): React.ReactElement {
-  const iconClass = "h-8 w-8 text-red-400";
-  
-  if (stepId.includes('login')) return <UserIcon className={iconClass} />;
-  if (stepId.includes('workflow')) return <ClipboardDocumentCheckIcon className={iconClass} />;
-  if (stepId.includes('approver') || stepId.includes('approve')) return <ShieldCheckIcon className={iconClass} />;
-  if (stepId.includes('onchain') || stepId.includes('proof')) return <CheckCircleIcon className={iconClass} />;
-  if (stepId.includes('transition')) return <ArrowPathIcon className={iconClass} />;
-  if (stepId === 'orientation' || stepId === 'demo-complete') return <BeakerIcon className={iconClass} />;
-  
-  return <ClipboardDocumentCheckIcon className={iconClass} />;
-}
+import { STORY_SEQUENCES, TOTAL_SEQUENCES } from './StorySequences';
 
 /**
  * DemoOverlay is the main overlay component that displays:
- * - Current step guidance
+ * - NarrativeBox story-driven guidance
  * - Progress indicator
- * - Navigation buttons
  * - Element highlighting
  */
 export function DemoOverlay(): React.ReactElement | null {
   const demo = useDemoContext();
+  const [narrativeKey, setNarrativeKey] = useState(0);
   
   // Don't render if demo is not enabled or not active
-  if (!DEMO_ENABLED || !demo || !demo.state.isActive || !demo.currentStep) {
+  if (!DEMO_ENABLED || !demo || !demo.state.isActive) {
     return null;
   }
 
-  const { currentStep, state, nextStep, skipDemo, exitDemo, progress, isLastStep } = demo;
+  const { state, nextStep, skipDemo } = demo;
+
+  // Map current step index to story sequence
+  const currentSequence = useMemo(() => {
+    if (state.currentStepIndex >= STORY_SEQUENCES.length) {
+      return STORY_SEQUENCES[STORY_SEQUENCES.length - 1];
+    }
+    return STORY_SEQUENCES[state.currentStepIndex] || STORY_SEQUENCES[0];
+  }, [state.currentStepIndex]);
+
+  // Trigger re-render of NarrativeBox on step change
+  useEffect(() => {
+    setNarrativeKey(prev => prev + 1);
+  }, [state.currentStepIndex]);
 
   // Determine if we should show the highlight
-  const showHighlight = Boolean(currentStep.targetSelector && currentStep.action === 'wait-for-action');
+  const showHighlight = Boolean(
+    currentSequence.targetSelector && 
+    currentSequence.action === 'click'
+  );
+
+  // Handle action click
+  const handleAction = () => {
+    nextStep();
+  };
+
+  // Handle skip click
+  const handleSkip = () => {
+    skipDemo();
+  };
 
   const overlayContent = (
     <>
       {/* Element highlight overlay */}
       <DemoHighlight
-        targetSelector={currentStep.targetSelector}
+        targetSelector={currentSequence.targetSelector}
         isActive={showHighlight}
       />
 
       {/* Role badge */}
       <DemoRoleBadge role={state.currentRole} />
 
-      {/* Main guidance panel */}
+      {/* Narrative Box - Fixed bottom center */}
       <div
-        className="fixed inset-0 flex items-end justify-center p-4 sm:p-6"
-        style={{ zIndex: DEMO_CONFIG.overlayZIndex, pointerEvents: 'none' }}
+        className="fixed inset-0 flex items-end justify-center pointer-events-none"
+        style={{ zIndex: DEMO_CONFIG.overlayZIndex }}
       >
-        <div
-          className="w-full max-w-2xl mb-4 pointer-events-auto"
-          style={{
-            animation: 'demo-slide-up 0.3s ease-out',
-          }}
-        >
-          {/* Glassmorphic panel */}
-          <div className="relative rounded-2xl overflow-hidden">
-            {/* Background with blur */}
-            <div className="absolute inset-0 bg-[#0A0A0B]/90 backdrop-blur-xl" />
-            
-            {/* Red glow border */}
-            <div className="absolute inset-0 rounded-2xl border border-red-500/30" />
-            <div
-              className="absolute inset-0 rounded-2xl"
-              style={{
-                boxShadow: `
-                  0 0 30px rgba(220, 38, 38, 0.15),
-                  0 0 60px rgba(220, 38, 38, 0.1),
-                  inset 0 1px 0 rgba(255, 255, 255, 0.05)
-                `,
-              }}
-            />
-
-            {/* Content */}
-            <div className="relative p-6">
-              {/* Header with progress */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  {getStepIcon(currentStep.id)}
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">
-                      {currentStep.title}
-                    </h3>
-                    {state.currentRole && (
-                      <span className="text-xs font-medium text-red-400 uppercase tracking-wider">
-                        Role: {getDemoRoleDisplayName(state.currentRole)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Exit button */}
-                <button
-                  onClick={exitDemo}
-                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-                  title="Exit Demo"
-                >
-                  <XMarkIcon className="h-5 w-5" />
-                </button>
-              </div>
-
-              {/* Progress bar */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-                  <span>Demo Progress</span>
-                  <span>{progress}%</span>
-                </div>
-                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-red-500 to-red-400 rounded-full transition-all duration-500"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Description */}
-              <div className="mb-4">
-                <p className="text-slate-300 whitespace-pre-line leading-relaxed">
-                  {currentStep.description}
-                </p>
-              </div>
-
-              {/* Instruction highlight */}
-              {currentStep.instruction && (
-                <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                  <p className="text-sm text-red-300">
-                    <span className="font-semibold">→ </span>
-                    {currentStep.instruction}
-                  </p>
-                </div>
-              )}
-
-              {/* Action buttons */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {currentStep.showSkip && (
-                    <button
-                      onClick={skipDemo}
-                      className="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-400 hover:text-white transition-colors"
-                    >
-                      <ForwardIcon className="h-4 w-4" />
-                      Skip Demo
-                    </button>
-                  )}
-                </div>
-
-                <button
-                  onClick={nextStep}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium text-white transition-all duration-200"
-                  style={{
-                    background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
-                    boxShadow: '0 4px 15px rgba(220, 38, 38, 0.3)',
-                  }}
-                >
-                  {isLastStep ? (
-                    <>
-                      <CheckCircleIcon className="h-5 w-5" />
-                      {currentStep.nextButtonText || 'Exit Demo'}
-                    </>
-                  ) : (
-                    <>
-                      {currentStep.nextButtonText || 'Continue'}
-                      <ArrowRightIcon className="h-4 w-4" />
-                    </>
-                  )}
-                </button>
-              </div>
+        <div className="w-full max-w-2xl p-4 sm:p-6 pointer-events-auto">
+          {/* Progress indicator above NarrativeBox */}
+          <div className="mb-2 flex items-center justify-between px-2">
+            <div className="flex items-center gap-2">
+              {STORY_SEQUENCES.map((seq, idx) => (
+                <div
+                  key={seq.id}
+                  className={`
+                    h-1.5 w-6 rounded-full transition-all duration-300
+                    ${idx <= state.currentStepIndex 
+                      ? 'bg-red-500' 
+                      : 'bg-white/20'}
+                  `}
+                />
+              ))}
             </div>
+            <span className="text-xs font-mono text-slate-400 uppercase tracking-widest">
+              {currentSequence.sequenceLabel} / {TOTAL_SEQUENCES - 1}
+            </span>
           </div>
+
+          {/* NarrativeBox with story content */}
+          <NarrativeBox
+            key={narrativeKey}
+            sequenceId={currentSequence.sequenceLabel}
+            title={currentSequence.title}
+            body={currentSequence.narrative}
+            actionText={currentSequence.actionText}
+            showSkip={currentSequence.showSkip}
+            onAction={handleAction}
+            onSkip={handleSkip}
+            isVisible={true}
+          />
         </div>
       </div>
-
-      {/* Animation styles */}
-      <style>{`
-        @keyframes demo-slide-up {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </>
   );
 
