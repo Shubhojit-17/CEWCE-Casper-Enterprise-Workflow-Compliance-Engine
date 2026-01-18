@@ -420,16 +420,22 @@ export function GlassAuthPage() {
       <div className="relative z-10 min-h-screen flex flex-col lg:flex-row">
         
         {/* === LEFT COLUMN: Engine Core Narrative (40%) === */}
-        <div className="hidden lg:flex lg:w-[40%] xl:w-[42%] flex-col items-center justify-center px-8 xl:px-16 py-20 relative">
+        <div 
+          className="hidden lg:flex lg:w-[40%] xl:w-[42%] flex-col items-center justify-center px-8 xl:px-16 py-20 relative"
+          style={{
+            perspective: '1200px',
+            transformStyle: 'preserve-3d',
+          }}
+        >
           {/* Column Red Ambient Light */}
           <div 
             className="absolute inset-0 pointer-events-none"
             style={{
-              background: 'radial-gradient(ellipse 80% 60% at 30% 50%, rgba(220, 38, 38, 0.1), transparent 70%)',
+              background: 'radial-gradient(ellipse 80% 60% at 30% 50%, rgba(220, 38, 38, 0.12), transparent 70%)',
             }}
           />
           
-          {/* Digital Shard Column Wrapper */}
+          {/* Digital Shard Column Wrapper - 3D Tilted */}
           <NarrativeBox delay={100}>
             <div className="max-w-md w-full space-y-8">
               
@@ -915,12 +921,37 @@ function GlassEngineCore() {
               }}
             />
 
-            {/* Holographic Casper Logo */}
-            <div className="absolute inset-0 flex items-center justify-center">
+            {/* Volumetric Blurred Glow Behind Logo - Creates depth */}
+            <motion.div
+              className="absolute inset-0 flex items-center justify-center pointer-events-none"
+              animate={{
+                opacity: [0.6, 0.9, 0.6],
+                scale: [1, 1.15, 1],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
+            >
+              <div 
+                className="w-32 h-32 xl:w-36 xl:h-36 rounded-full"
+                style={{
+                  background: 'radial-gradient(circle, rgba(220, 38, 38, 0.6) 0%, rgba(220, 38, 38, 0.3) 40%, transparent 70%)',
+                  filter: 'blur(25px)',
+                }}
+              />
+            </motion.div>
+
+            {/* Holographic Casper Logo - Floats forward with parallax */}
+            <div 
+              className="absolute inset-0 flex items-center justify-center"
+              style={{ transform: 'translateZ(20px)' }}
+            >
               <motion.div
                 animate={{ 
-                  scale: [1, 1.08, 1],
-                  opacity: [0.85, 1, 0.85],
+                  scale: [1, 1.1, 1],
+                  y: [0, -5, 0],
                 }}
                 transition={{ 
                   duration: 3, 
@@ -929,18 +960,19 @@ function GlassEngineCore() {
                 }}
                 className="relative"
                 style={{
-                  filter: 'drop-shadow(0 0 25px rgba(220, 38, 38, 0.9)) drop-shadow(0 0 50px rgba(220, 38, 38, 0.5))',
+                  filter: 'drop-shadow(0 0 30px rgba(220, 38, 38, 1)) drop-shadow(0 0 60px rgba(220, 38, 38, 0.6))',
                 }}
               >
-                {/* Glowing "C" Logo with HUD styling */}
+                {/* Glowing "C" Logo with HUD styling - Volumetric */}
                 <div 
                   className="w-24 h-24 xl:w-28 xl:h-28 flex items-center justify-center"
                   style={{
-                    background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 50%, #7f1d1d 100%)',
+                    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 30%, #991b1b 70%, #7f1d1d 100%)',
                     boxShadow: `
-                      0 0 40px rgba(220, 38, 38, 0.7),
-                      inset 0 2px 4px rgba(255, 255, 255, 0.25),
-                      inset 0 -2px 4px rgba(0, 0, 0, 0.3)
+                      0 0 50px rgba(220, 38, 38, 0.8),
+                      0 10px 30px rgba(0, 0, 0, 0.5),
+                      inset 0 3px 6px rgba(255, 255, 255, 0.3),
+                      inset 0 -3px 6px rgba(0, 0, 0, 0.4)
                     `,
                     clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))',
                   }}
@@ -948,47 +980,50 @@ function GlassEngineCore() {
                   <span 
                     className="text-white font-bold text-5xl xl:text-6xl"
                     style={{
-                      textShadow: '0 0 25px rgba(255, 255, 255, 0.6)',
+                      textShadow: '0 0 30px rgba(255, 255, 255, 0.7), 0 0 60px rgba(255, 255, 255, 0.3)',
                     }}
                   >
                     C
                   </span>
                 </div>
                 
-                {/* Verification Badge */}
+                {/* Verification Badge - Floats even further forward */}
                 <motion.div
                   animate={{ 
-                    opacity: [0.7, 1, 0.7],
-                    scale: [1, 1.15, 1],
+                    opacity: [0.8, 1, 0.8],
+                    scale: [1, 1.2, 1],
+                    y: [0, -3, 0],
                   }}
                   transition={{ duration: 2, repeat: Infinity }}
                   className="absolute -bottom-2 -right-2 w-9 h-9 rounded-full flex items-center justify-center"
                   style={{
                     background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-                    boxShadow: '0 0 25px rgba(34, 197, 94, 0.7), inset 0 1px 2px rgba(255, 255, 255, 0.3)',
-                    border: '2px solid rgba(0, 0, 0, 0.3)',
+                    boxShadow: '0 0 30px rgba(34, 197, 94, 0.8), 0 5px 15px rgba(0, 0, 0, 0.4), inset 0 1px 3px rgba(255, 255, 255, 0.4)',
+                    border: '2px solid rgba(255, 255, 255, 0.2)',
+                    transform: 'translateZ(30px)',
                   }}
                 >
-                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ filter: 'drop-shadow(0 0 4px rgba(255, 255, 255, 0.5))' }}>
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                   </svg>
                 </motion.div>
               </motion.div>
             </div>
 
-            {/* Diagonal Refraction Line */}
+            {/* Diagonal Refraction Line - Volumetric shine */}
             <motion.div 
               animate={{ 
-                opacity: [0.15, 0.4, 0.15],
+                opacity: [0.1, 0.5, 0.1],
+                x: ['-100%', '200%'],
               }}
               transition={{ 
-                duration: 4, 
+                duration: 6, 
                 repeat: Infinity, 
                 ease: 'easeInOut' 
               }}
-              className="absolute inset-0 overflow-hidden"
+              className="absolute inset-0 overflow-hidden pointer-events-none"
               style={{
-                background: 'linear-gradient(135deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%)',
+                background: 'linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.25) 50%, transparent 70%)',
                 clipPath: 'polygon(0 12px, 12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px))',
               }}
             />
@@ -1018,29 +1053,50 @@ function NarrativeBox({ children, delay = 0 }: NarrativeBoxProps) {
       style={{ 
         originY: 0.5,
         transitionDelay: `${delay}ms`,
+        transformStyle: 'preserve-3d',
       }}
       className="relative"
     >
-      {/* Main Digital Shard Container */}
-      <div 
-        className="relative px-6 py-5 overflow-hidden"
+      {/* Main Digital Shard Container - TRUE 3D with Tilt */}
+      <motion.div 
+        className="relative px-6 py-6 overflow-hidden"
+        initial={{ rotateX: 0, rotateY: 0 }}
+        animate={{ rotateX: 2, rotateY: -3 }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
         style={{
-          background: 'rgba(0, 0, 0, 0.6)',
-          backdropFilter: 'blur(30px)',
-          WebkitBackdropFilter: 'blur(30px)',
-          clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))',
+          background: 'rgba(255, 255, 255, 0.03)',
+          backdropFilter: 'blur(40px)',
+          WebkitBackdropFilter: 'blur(40px)',
+          clipPath: 'polygon(0 12px, 12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px))',
+          // Multi-layered borders for "Rim Lighting" - different on each edge
+          borderTop: '1px solid rgba(255, 255, 255, 0.3)',
+          borderLeft: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRight: '1px solid rgba(255, 3, 3, 0.15)',
+          borderBottom: '1px solid rgba(255, 3, 3, 0.35)',
+          // Inner glow to simulate glass volume + deep shadow
           boxShadow: `
-            0 0 30px rgba(220, 38, 38, 0.15),
-            inset 0 1px 0 rgba(255, 255, 255, 0.08)
+            inset 0 0 30px rgba(255, 255, 255, 0.05),
+            inset 0 0 60px rgba(220, 38, 38, 0.08),
+            0 25px 60px -10px rgba(0, 0, 0, 0.6),
+            0 0 40px rgba(220, 38, 38, 0.15)
           `,
+          transformStyle: 'preserve-3d',
         }}
       >
-        {/* Rim Light Gradient Border Overlay */}
+        {/* Rim Light Gradient Border Overlay - Volumetric */}
         <div 
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, transparent 40%, rgba(255, 3, 3, 0.1) 100%)',
-            clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))',
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 35%, transparent 65%, rgba(255, 3, 3, 0.12) 100%)',
+            clipPath: 'polygon(0 12px, 12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px))',
+          }}
+        />
+        
+        {/* Top Edge Highlight - Glass Thickness */}
+        <div 
+          className="absolute top-0 left-4 right-4 h-px pointer-events-none"
+          style={{
+            background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent)',
           }}
         />
         
@@ -1082,11 +1138,14 @@ function NarrativeBox({ children, delay = 0 }: NarrativeBoxProps) {
           }}
         />
         
-        {/* Content */}
-        <div className="relative z-10">
+        {/* Content - Slightly forward in Z-space */}
+        <div 
+          className="relative z-10"
+          style={{ transform: 'translateZ(10px)' }}
+        >
           {children}
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 }
@@ -1165,16 +1224,40 @@ function NetworkPulseWidget() {
   }, []);
 
   return (
-    <div 
-      className="relative rounded-xl px-4 py-3"
+    <motion.div 
+      className="relative px-4 py-3"
+      initial={{ rotateX: 0, rotateY: 0 }}
+      animate={{ rotateX: -2, rotateY: 4 }}
+      transition={{ duration: 0.6, ease: 'easeOut' }}
       style={{
-        background: 'rgba(0, 0, 0, 0.4)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        border: '1px solid rgba(220, 38, 38, 0.25)',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+        background: 'rgba(255, 255, 255, 0.02)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        // Multi-layered borders - opposite tilt from main shard
+        borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+        borderLeft: '1px solid rgba(255, 255, 255, 0.15)',
+        borderRight: '1px solid rgba(255, 3, 3, 0.2)',
+        borderBottom: '1px solid rgba(255, 3, 3, 0.4)',
+        // Notched corners
+        clipPath: 'polygon(0 6px, 6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px))',
+        // Volumetric shadow
+        boxShadow: `
+          inset 0 0 15px rgba(255, 255, 255, 0.03),
+          inset 0 0 30px rgba(220, 38, 38, 0.05),
+          0 15px 35px -5px rgba(0, 0, 0, 0.5),
+          0 0 25px rgba(220, 38, 38, 0.1)
+        `,
+        transformStyle: 'preserve-3d',
       }}
     >
+      {/* Top Edge Highlight */}
+      <div 
+        className="absolute top-0 left-2 right-2 h-px pointer-events-none"
+        style={{
+          background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)',
+        }}
+      />
+      
       {/* Header Row */}
       <div className="flex items-center gap-2 mb-2">
         {/* Pulsing Red Dot */}
@@ -1187,14 +1270,14 @@ function NetworkPulseWidget() {
             className="relative inline-flex h-2.5 w-2.5 rounded-full"
             style={{ 
               backgroundColor: '#dc2626',
-              boxShadow: '0 0 8px rgba(220, 38, 38, 0.8)',
+              boxShadow: '0 0 10px rgba(220, 38, 38, 1)',
             }}
           />
         </span>
         <span 
           className="text-[10px] text-slate-500 uppercase tracking-[0.15em] font-medium"
         >
-          Simulated Network Activity
+          <DecryptionText text="Simulated Network Activity" delay={1200} duration={400} />
         </span>
       </div>
       
@@ -1210,7 +1293,7 @@ function NetworkPulseWidget() {
               transition={{ duration: 0.3 }}
               className="text-sm text-white font-medium"
               style={{ 
-                textShadow: '0 0 15px rgba(220, 38, 38, 0.4)',
+                textShadow: '0 0 15px rgba(220, 38, 38, 0.5)',
               }}
             >
               {NETWORK_MESSAGES[currentMessage]}
@@ -1218,7 +1301,7 @@ function NetworkPulseWidget() {
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
