@@ -298,45 +298,6 @@ export function GlassAuthPage() {
       {/* === Layer 3: Particle Constellation (Full Page) === */}
       <ParticleBackground />
 
-      {/* === Header with Logo === */}
-      <div className="absolute top-0 left-0 right-0 z-50 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Casper Logo / CEWCE Wordmark */}
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center shadow-lg shadow-red-600/20">
-              <span className="text-white font-bold text-sm">C</span>
-            </div>
-            <span className="text-white font-semibold text-lg tracking-wide">
-              Casper
-            </span>
-          </div>
-
-          {/* Minimal Auth Nav */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => handleTabChange('login')}
-              className={`px-4 py-2 text-sm font-medium transition-colors duration-200 rounded-lg ${
-                activeTab === 'login' 
-                  ? 'text-white bg-white/5' 
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              Log in
-            </button>
-            <button
-              onClick={() => handleTabChange('signup')}
-              className={`px-5 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                activeTab === 'signup'
-                  ? 'bg-red-600 text-white shadow-lg shadow-red-600/20'
-                  : 'bg-red-600/80 text-white hover:bg-red-600 shadow-lg shadow-red-600/20'
-              }`}
-            >
-              Sign up
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* === Main Split-Prism Layout === */}
       <div className="relative z-10 min-h-screen flex flex-col lg:flex-row">
         
