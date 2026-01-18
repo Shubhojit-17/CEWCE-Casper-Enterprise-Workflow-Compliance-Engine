@@ -1,13 +1,39 @@
 // =============================================================================
-// Split-Prism Auth Page - Premium Two-Column Layout
-// Left: Engine Core Narrative | Right: Glass Terminal Auth Form
+// Split-Prism Auth Page - Mechanical HUD Design
+// Left: Digital Shard Narrative | Right: Glass Terminal Auth Form
 // =============================================================================
 
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
+
+// =============================================================================
+// HUD Animation Variants - Signal Stutter Effect
+// =============================================================================
+const hudVariants = {
+  hidden: { 
+    opacity: 0, 
+    scaleY: 0, 
+    filter: 'brightness(2) blur(10px)' 
+  },
+  visible: { 
+    opacity: [0, 1, 0.5, 1, 0.8, 1],
+    scaleY: 1,
+    filter: 'brightness(1) blur(0px)',
+    transition: { 
+      duration: 0.4, 
+      times: [0, 0.1, 0.2, 0.3, 0.4, 1], 
+      ease: 'easeOut' as const
+    }
+  },
+  exit: { 
+    scaleY: 0, 
+    opacity: 0, 
+    transition: { duration: 0.2 } 
+  }
+};
 import { 
   EyeIcon, 
   EyeSlashIcon, 
@@ -57,6 +83,98 @@ const NETWORK_MESSAGES = [
   'Smart Contract Executed',
   'Proof-of-Integrity Verified',
 ];
+
+// =============================================================================
+// DecryptionText Component - Hash-to-Text Reveal Effect
+// =============================================================================
+
+interface DecryptionTextProps {
+  text: string;
+  delay?: number;
+  duration?: number;
+  className?: string;
+}
+
+const HEX_CHARS = '0123456789ABCDEF';
+
+function DecryptionText({ text, delay = 0, duration = 600, className = '' }: DecryptionTextProps) {
+  const [displayText, setDisplayText] = useState('');
+  const [isDecrypting, setIsDecrypting] = useState(false);
+  const [hasDecrypted, setHasDecrypted] = useState(false);
+
+  useEffect(() => {
+    // Initial delay before starting
+    const startTimeout = setTimeout(() => {
+      setIsDecrypting(true);
+      
+      // Create initial scrambled text
+      const scrambled = text.split('').map(char => 
+        char === ' ' ? ' ' : HEX_CHARS[Math.floor(Math.random() * HEX_CHARS.length)]
+      ).join('');
+      setDisplayText(scrambled);
+      
+      // Calculate timing for character-by-character reveal
+      const charDuration = duration / text.length;
+      let currentIndex = 0;
+      
+      // Scramble interval during decryption
+      const scrambleInterval = setInterval(() => {
+        setDisplayText(prev => {
+          const chars = prev.split('');
+          for (let i = currentIndex; i < text.length; i++) {
+            if (text[i] !== ' ') {
+              chars[i] = HEX_CHARS[Math.floor(Math.random() * HEX_CHARS.length)];
+            }
+          }
+          return chars.join('');
+        });
+      }, 50);
+      
+      // Character reveal interval
+      const revealInterval = setInterval(() => {
+        if (currentIndex >= text.length) {
+          clearInterval(revealInterval);
+          clearInterval(scrambleInterval);
+          setDisplayText(text);
+          setIsDecrypting(false);
+          setHasDecrypted(true);
+          return;
+        }
+        
+        setDisplayText(prev => {
+          const chars = prev.split('');
+          chars[currentIndex] = text[currentIndex];
+          return chars.join('');
+        });
+        currentIndex++;
+      }, charDuration);
+      
+      return () => {
+        clearInterval(revealInterval);
+        clearInterval(scrambleInterval);
+      };
+    }, delay);
+    
+    return () => clearTimeout(startTimeout);
+  }, [text, delay, duration]);
+
+  return (
+    <span 
+      className={`font-mono ${className}`}
+      style={{
+        color: hasDecrypted ? '#ffffff' : '#ef4444',
+        textShadow: isDecrypting 
+          ? '0 0 10px rgba(239, 68, 68, 0.8), 0 0 20px rgba(239, 68, 68, 0.4)' 
+          : hasDecrypted 
+            ? '0 0 20px rgba(255, 255, 255, 0.25)' 
+            : 'none',
+        transition: 'color 0.3s ease, text-shadow 0.3s ease',
+      }}
+    >
+      {displayText || text.split('').map(c => c === ' ' ? ' ' : '█').join('')}
+    </span>
+  );
+}
 
 // =============================================================================
 // Glassmorphism Auth Page Component
@@ -307,27 +425,39 @@ export function GlassAuthPage() {
           <div 
             className="absolute inset-0 pointer-events-none"
             style={{
-              background: 'radial-gradient(ellipse 80% 60% at 30% 50%, rgba(220, 38, 38, 0.08), transparent 70%)',
+              background: 'radial-gradient(ellipse 80% 60% at 30% 50%, rgba(220, 38, 38, 0.1), transparent 70%)',
             }}
           />
           
-          {/* Glass Column Wrapper */}
-          <div 
-            className="relative max-w-md w-full h-full flex flex-col items-center justify-center py-8 px-6 rounded-3xl"
-            style={{
-              background: 'rgba(255, 255, 255, 0.02)',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255, 255, 255, 0.05)',
-            }}
-          >
-            {/* Content Container */}
-            <div className="w-full space-y-10">
+          {/* Digital Shard Column Wrapper */}
+          <NarrativeBox delay={100}>
+            <div className="max-w-md w-full space-y-8">
+              
+              {/* Section Title */}
+              <div className="text-center mb-2">
+                <motion.h2 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3, duration: 0.5 }}
+                  className="text-xs uppercase tracking-[0.3em] text-slate-500 mb-1"
+                >
+                  <DecryptionText text="COMPLIANCE ENGINE" delay={500} duration={500} />
+                </motion.h2>
+                <motion.div
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ delay: 0.5, duration: 0.8 }}
+                  className="h-px mx-auto max-w-[120px]"
+                  style={{
+                    background: 'linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.6), transparent)',
+                  }}
+                />
+              </div>
               
               {/* Floating 3D Glass Engine Core */}
               <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
                 className="relative"
                 style={{ perspective: '1200px' }}
@@ -336,21 +466,21 @@ export function GlassAuthPage() {
               </motion.div>
 
               {/* Glowing Value Propositions */}
-              <div className="space-y-4">
+              <div className="space-y-4 pt-2">
                 <TrustIndicator 
                   icon={<DocumentCheckIcon className="w-5 h-5" />}
                   text="Immutable Audit Trails"
-                  delay={0.3}
+                  delay={0.4}
                 />
                 <TrustIndicator 
                   icon={<BoltIcon className="w-5 h-5" />}
                   text="Off-Chain Efficiency"
-                  delay={0.45}
+                  delay={0.55}
                 />
                 <TrustIndicator 
                   icon={<LinkIcon className="w-5 h-5" />}
                   text="On-Chain Finality"
-                  delay={0.6}
+                  delay={0.7}
                 />
               </div>
 
@@ -358,12 +488,12 @@ export function GlassAuthPage() {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.75 }}
+                transition={{ duration: 0.6, delay: 0.85 }}
               >
                 <NetworkPulseWidget />
               </motion.div>
             </div>
-          </div>
+          </NarrativeBox>
         </div>
 
         {/* === RIGHT COLUMN: Glass Terminal Auth Form (60%) === */}
@@ -374,48 +504,92 @@ export function GlassAuthPage() {
             transition={{ duration: 0.6, ease: 'easeOut' }}
             className="relative w-full max-w-md lg:max-w-lg"
           >
-            {/* === Glass Terminal Container === */}
+            {/* === Glass Terminal Container with Enhanced HUD Styling === */}
             <div
-              className="relative rounded-3xl overflow-hidden"
+              className="relative overflow-hidden"
               style={{
-                background: 'rgba(255, 255, 255, 0.03)',
+                clipPath: 'polygon(0 16px, 16px 0, calc(100% - 16px) 0, 100% 16px, 100% calc(100% - 16px), calc(100% - 16px) 100%, 16px 100%, 0 calc(100% - 16px))',
+                background: 'rgba(0, 0, 0, 0.65)',
                 backdropFilter: 'blur(40px)',
                 WebkitBackdropFilter: 'blur(40px)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
                 boxShadow: `
-                  0 30px 60px -15px rgba(0, 0, 0, 0.6),
-                  0 25px 50px -12px rgba(255, 50, 50, 0.15),
-                  inset 0 1px 0 0 rgba(255, 255, 255, 0.08)
+                  0 30px 60px -15px rgba(0, 0, 0, 0.7),
+                  0 25px 50px -12px rgba(255, 50, 50, 0.2),
+                  inset 0 1px 0 0 rgba(255, 255, 255, 0.1)
                 `,
               }}
             >
+              {/* Rim Light Gradient Border Overlay */}
+              <div 
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 40%, rgba(255, 3, 3, 0.15) 100%)',
+                  clipPath: 'polygon(0 16px, 16px 0, calc(100% - 16px) 0, 100% 16px, 100% calc(100% - 16px), calc(100% - 16px) 100%, 16px 100%, 0 calc(100% - 16px))',
+                }}
+              />
+              
+              {/* HUD L-Shaped Brackets */}
+              <div className="absolute top-0 left-0 w-8 h-8 pointer-events-none">
+                <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-red-500 to-transparent" />
+                <div className="absolute top-0 left-0 w-[2px] h-full bg-gradient-to-b from-red-500 to-transparent" />
+              </div>
+              <div className="absolute top-0 right-0 w-8 h-8 pointer-events-none">
+                <div className="absolute top-0 right-0 w-full h-[2px] bg-gradient-to-l from-red-500 to-transparent" />
+                <div className="absolute top-0 right-0 w-[2px] h-full bg-gradient-to-b from-red-500 to-transparent" />
+              </div>
+              <div className="absolute bottom-0 left-0 w-8 h-8 pointer-events-none">
+                <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-red-500 to-transparent" />
+                <div className="absolute bottom-0 left-0 w-[2px] h-full bg-gradient-to-t from-red-500 to-transparent" />
+              </div>
+              <div className="absolute bottom-0 right-0 w-8 h-8 pointer-events-none">
+                <div className="absolute bottom-0 right-0 w-full h-[2px] bg-gradient-to-l from-red-500 to-transparent" />
+                <div className="absolute bottom-0 right-0 w-[2px] h-full bg-gradient-to-t from-red-500 to-transparent" />
+              </div>
+
               {/* Top-Left Rim Light */}
               <div
-                className="absolute top-0 left-0 w-32 h-32 pointer-events-none"
+                className="absolute top-0 left-0 w-40 h-40 pointer-events-none"
                 style={{
-                  background: 'radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 60%)',
+                  background: 'radial-gradient(circle at top left, rgba(255, 255, 255, 0.1), transparent 60%)',
                 }}
               />
 
               {/* Bottom Red Glow */}
               <div
-                className="absolute bottom-0 left-0 right-0 h-40 pointer-events-none"
+                className="absolute bottom-0 left-0 right-0 h-48 pointer-events-none"
                 style={{
-                  background: 'linear-gradient(to top, rgba(220, 38, 38, 0.12), transparent)',
+                  background: 'linear-gradient(to top, rgba(220, 38, 38, 0.15), transparent)',
+                }}
+              />
+              
+              {/* Scan Line Animation */}
+              <motion.div
+                animate={{
+                  top: ['0%', '100%', '0%'],
+                }}
+                transition={{
+                  duration: 12,
+                  repeat: Infinity,
+                  ease: 'linear',
+                }}
+                className="absolute left-0 right-0 h-px pointer-events-none z-50"
+                style={{
+                  background: 'linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.3), transparent)',
                 }}
               />
 
               <div className="relative p-8 sm:p-10 lg:p-12">
                 {/* === Header === */}
                 <div className="text-center mb-8">
-                  {/* Small Logo */}
+                  {/* Small Logo with HUD styling */}
                   <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.2, duration: 0.5 }}
-                    className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500/20 to-red-900/20 border border-red-500/20 flex items-center justify-center mb-5"
+                    className="mx-auto w-14 h-14 bg-gradient-to-br from-red-500/25 to-red-900/25 border border-red-500/30 flex items-center justify-center mb-5"
                     style={{
-                      boxShadow: '0 0 30px rgba(220, 38, 38, 0.25)',
+                      boxShadow: '0 0 35px rgba(220, 38, 38, 0.35)',
+                      clipPath: 'polygon(0 6px, 6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px))',
                     }}
                   >
                     <svg
@@ -423,6 +597,7 @@ export function GlassAuthPage() {
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(220, 38, 38, 0.8))' }}
                     >
                       <path
                         strokeLinecap="round"
@@ -433,10 +608,10 @@ export function GlassAuthPage() {
                     </svg>
                   </motion.div>
 
-                  {/* Title with Gradient */}
+                  {/* Title with Gradient and Decryption Effect */}
                   <h1 className="text-2xl sm:text-3xl font-bold tracking-wider uppercase">
                     <span className="bg-gradient-to-r from-red-400 via-red-300 to-white bg-clip-text text-transparent">
-                      Access The Engine
+                      <DecryptionText text="Access The Engine" delay={300} duration={600} className="!font-bold" />
                     </span>
                   </h1>
                 </div>
@@ -612,17 +787,44 @@ export function GlassAuthPage() {
 }
 
 // =============================================================================
-// Glass Engine Core Component (3D Rotating Prism)
+// Glass Engine Core Component (3D Rotating Prism with Mouse Tracking)
 // =============================================================================
 
 function GlassEngineCore() {
+  // Mouse tracking for 3D tilt effect
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  
+  // Spring physics for smooth tilt
+  const springConfig = { stiffness: 150, damping: 15, mass: 0.1 };
+  const rotateX = useSpring(useTransform(mouseY, [-100, 100], [15, -15]), springConfig);
+  const rotateY = useSpring(useTransform(mouseX, [-100, 100], [-15, 15]), springConfig);
+  
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    mouseX.set(e.clientX - centerX);
+    mouseY.set(e.clientY - centerY);
+  };
+  
+  const handleMouseLeave = () => {
+    mouseX.set(0);
+    mouseY.set(0);
+  };
+
   return (
-    <div className="relative mx-auto w-56 h-56 xl:w-64 xl:h-64" style={{ perspective: '1200px' }}>
+    <div 
+      className="relative mx-auto w-56 h-56 xl:w-64 xl:h-64" 
+      style={{ perspective: '1200px' }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
       {/* Deep Ambient Glow */}
       <motion.div 
         animate={{ 
-          opacity: [0.4, 0.6, 0.4],
-          scale: [1, 1.05, 1],
+          opacity: [0.4, 0.65, 0.4],
+          scale: [1, 1.08, 1],
         }}
         transition={{ 
           duration: 4, 
@@ -631,151 +833,166 @@ function GlassEngineCore() {
         }}
         className="absolute inset-0 rounded-3xl"
         style={{
-          background: 'radial-gradient(circle at center, rgba(220, 38, 38, 0.35), transparent 60%)',
-          filter: 'blur(40px)',
+          background: 'radial-gradient(circle at center, rgba(220, 38, 38, 0.4), transparent 60%)',
+          filter: 'blur(45px)',
         }}
       />
       
-      {/* 3D Glass Cube Container */}
+      {/* 3D Glass Cube Container with Mouse Tracking */}
       <motion.div
-        animate={{ 
-          rotateY: [0, 360],
-        }}
-        transition={{ 
-          duration: 25, 
-          repeat: Infinity, 
-          ease: 'linear' 
-        }}
-        className="absolute inset-0"
         style={{ 
+          rotateX,
+          rotateY,
           transformStyle: 'preserve-3d',
         }}
+        className="absolute inset-0"
       >
-        {/* Main Glass Cube with Float Animation */}
+        {/* Auto-Rotating Inner Container */}
         <motion.div
           animate={{ 
-            y: [0, -15, 0],
-            rotateX: [0, 3, -3, 0],
+            rotateY: [0, 360],
           }}
           transition={{ 
-            duration: 6, 
+            duration: 25, 
             repeat: Infinity, 
-            ease: 'easeInOut' 
+            ease: 'linear' 
           }}
-          className="absolute inset-4 rounded-2xl"
-          style={{
-            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 50%, rgba(255, 255, 255, 0.08) 100%)',
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            boxShadow: `
-              0 25px 50px -12px rgba(0, 0, 0, 0.6),
-              inset 0 0 60px rgba(220, 38, 38, 0.15),
-              inset 0 2px 0 rgba(255, 255, 255, 0.15),
-              inset 0 -2px 0 rgba(0, 0, 0, 0.3)
-            `,
+          style={{ 
             transformStyle: 'preserve-3d',
           }}
+          className="absolute inset-0"
         >
-          {/* Top Edge Highlight */}
-          <div 
-            className="absolute top-0 left-2 right-2 h-px"
-            style={{
-              background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent)',
-            }}
-          />
-          
-          {/* Left Edge Highlight */}
-          <div 
-            className="absolute top-2 bottom-2 left-0 w-px"
-            style={{
-              background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent)',
-            }}
-          />
-          
-          {/* Inner Red Glow */}
-          <div 
-            className="absolute inset-0 rounded-2xl"
-            style={{
-              background: 'radial-gradient(circle at 30% 30%, rgba(220, 38, 38, 0.2), transparent 60%)',
-            }}
-          />
-
-          {/* Holographic Casper Logo */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <motion.div
-              animate={{ 
-                scale: [1, 1.08, 1],
-                opacity: [0.85, 1, 0.85],
-              }}
-              transition={{ 
-                duration: 3, 
-                repeat: Infinity, 
-                ease: 'easeInOut' 
-              }}
-              className="relative"
-              style={{
-                filter: 'drop-shadow(0 0 20px rgba(220, 38, 38, 0.8)) drop-shadow(0 0 40px rgba(220, 38, 38, 0.4))',
-              }}
-            >
-              {/* Glowing "C" Logo */}
-              <div 
-                className="w-24 h-24 xl:w-28 xl:h-28 rounded-2xl flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 50%, #7f1d1d 100%)',
-                  boxShadow: `
-                    0 0 30px rgba(220, 38, 38, 0.6),
-                    inset 0 2px 4px rgba(255, 255, 255, 0.2),
-                    inset 0 -2px 4px rgba(0, 0, 0, 0.3)
-                  `,
-                }}
-              >
-                <span 
-                  className="text-white font-bold text-5xl xl:text-6xl"
-                  style={{
-                    textShadow: '0 0 20px rgba(255, 255, 255, 0.5)',
-                  }}
-                >
-                  C
-                </span>
-              </div>
-              
-              {/* Verification Badge */}
-              <motion.div
-                animate={{ 
-                  opacity: [0.7, 1, 0.7],
-                  scale: [1, 1.1, 1],
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="absolute -bottom-2 -right-2 w-9 h-9 rounded-full flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-                  boxShadow: '0 0 20px rgba(34, 197, 94, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.3)',
-                  border: '2px solid rgba(0, 0, 0, 0.3)',
-                }}
-              >
-                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
-              </motion.div>
-            </motion.div>
-          </div>
-
-          {/* Diagonal Refraction Line */}
-          <motion.div 
+          {/* Main Glass Cube with Float Animation */}
+          <motion.div
             animate={{ 
-              opacity: [0.15, 0.35, 0.15],
+              y: [0, -15, 0],
             }}
             transition={{ 
-              duration: 4, 
+              duration: 6, 
               repeat: Infinity, 
               ease: 'easeInOut' 
             }}
-            className="absolute inset-0 rounded-2xl overflow-hidden"
+            className="absolute inset-4"
             style={{
-              background: 'linear-gradient(135deg, transparent 30%, rgba(255, 255, 255, 0.15) 50%, transparent 70%)',
+              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 50%, rgba(255, 255, 255, 0.08) 100%)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              boxShadow: `
+                0 25px 50px -12px rgba(0, 0, 0, 0.6),
+                inset 0 0 60px rgba(220, 38, 38, 0.2),
+                inset 0 2px 0 rgba(255, 255, 255, 0.15),
+                inset 0 -2px 0 rgba(0, 0, 0, 0.3)
+              `,
+              transformStyle: 'preserve-3d',
+              clipPath: 'polygon(0 12px, 12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px))',
             }}
-          />
+          >
+            {/* HUD L-Brackets */}
+            <div className="absolute top-0 left-0 w-6 h-6 pointer-events-none">
+              <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-red-500 to-transparent" />
+              <div className="absolute top-0 left-0 w-[2px] h-full bg-gradient-to-b from-red-500 to-transparent" />
+            </div>
+            <div className="absolute top-0 right-0 w-6 h-6 pointer-events-none">
+              <div className="absolute top-0 right-0 w-full h-[2px] bg-gradient-to-l from-red-500 to-transparent" />
+              <div className="absolute top-0 right-0 w-[2px] h-full bg-gradient-to-b from-red-500 to-transparent" />
+            </div>
+            <div className="absolute bottom-0 left-0 w-6 h-6 pointer-events-none">
+              <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-red-500 to-transparent" />
+              <div className="absolute bottom-0 left-0 w-[2px] h-full bg-gradient-to-t from-red-500 to-transparent" />
+            </div>
+            <div className="absolute bottom-0 right-0 w-6 h-6 pointer-events-none">
+              <div className="absolute bottom-0 right-0 w-full h-[2px] bg-gradient-to-l from-red-500 to-transparent" />
+              <div className="absolute bottom-0 right-0 w-[2px] h-full bg-gradient-to-t from-red-500 to-transparent" />
+            </div>
+            
+            {/* Inner Red Glow */}
+            <div 
+              className="absolute inset-0"
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, rgba(220, 38, 38, 0.25), transparent 60%)',
+                clipPath: 'polygon(0 12px, 12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px))',
+              }}
+            />
+
+            {/* Holographic Casper Logo */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <motion.div
+                animate={{ 
+                  scale: [1, 1.08, 1],
+                  opacity: [0.85, 1, 0.85],
+                }}
+                transition={{ 
+                  duration: 3, 
+                  repeat: Infinity, 
+                  ease: 'easeInOut' 
+                }}
+                className="relative"
+                style={{
+                  filter: 'drop-shadow(0 0 25px rgba(220, 38, 38, 0.9)) drop-shadow(0 0 50px rgba(220, 38, 38, 0.5))',
+                }}
+              >
+                {/* Glowing "C" Logo with HUD styling */}
+                <div 
+                  className="w-24 h-24 xl:w-28 xl:h-28 flex items-center justify-center"
+                  style={{
+                    background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 50%, #7f1d1d 100%)',
+                    boxShadow: `
+                      0 0 40px rgba(220, 38, 38, 0.7),
+                      inset 0 2px 4px rgba(255, 255, 255, 0.25),
+                      inset 0 -2px 4px rgba(0, 0, 0, 0.3)
+                    `,
+                    clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))',
+                  }}
+                >
+                  <span 
+                    className="text-white font-bold text-5xl xl:text-6xl"
+                    style={{
+                      textShadow: '0 0 25px rgba(255, 255, 255, 0.6)',
+                    }}
+                  >
+                    C
+                  </span>
+                </div>
+                
+                {/* Verification Badge */}
+                <motion.div
+                  animate={{ 
+                    opacity: [0.7, 1, 0.7],
+                    scale: [1, 1.15, 1],
+                  }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute -bottom-2 -right-2 w-9 h-9 rounded-full flex items-center justify-center"
+                  style={{
+                    background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                    boxShadow: '0 0 25px rgba(34, 197, 94, 0.7), inset 0 1px 2px rgba(255, 255, 255, 0.3)',
+                    border: '2px solid rgba(0, 0, 0, 0.3)',
+                  }}
+                >
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </motion.div>
+              </motion.div>
+            </div>
+
+            {/* Diagonal Refraction Line */}
+            <motion.div 
+              animate={{ 
+                opacity: [0.15, 0.4, 0.15],
+              }}
+              transition={{ 
+                duration: 4, 
+                repeat: Infinity, 
+                ease: 'easeInOut' 
+              }}
+              className="absolute inset-0 overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%)',
+                clipPath: 'polygon(0 12px, 12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px))',
+              }}
+            />
+          </motion.div>
         </motion.div>
       </motion.div>
     </div>
@@ -783,7 +1000,99 @@ function GlassEngineCore() {
 }
 
 // =============================================================================
-// Trust Indicator Component (Glowing Value Propositions)
+// Narrative Box - Digital Shard Container
+// =============================================================================
+
+interface NarrativeBoxProps {
+  children: React.ReactNode;
+  delay?: number;
+}
+
+function NarrativeBox({ children, delay = 0 }: NarrativeBoxProps) {
+  return (
+    <motion.div
+      variants={hudVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+      style={{ 
+        originY: 0.5,
+        transitionDelay: `${delay}ms`,
+      }}
+      className="relative"
+    >
+      {/* Main Digital Shard Container */}
+      <div 
+        className="relative px-6 py-5 overflow-hidden"
+        style={{
+          background: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(30px)',
+          WebkitBackdropFilter: 'blur(30px)',
+          clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))',
+          boxShadow: `
+            0 0 30px rgba(220, 38, 38, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.08)
+          `,
+        }}
+      >
+        {/* Rim Light Gradient Border Overlay */}
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, transparent 40%, rgba(255, 3, 3, 0.1) 100%)',
+            clipPath: 'polygon(0 8px, 8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px))',
+          }}
+        />
+        
+        {/* L-Shaped Corner Brackets */}
+        {/* Top-Left */}
+        <div className="absolute top-0 left-0 w-4 h-4 pointer-events-none">
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-red-500/80 to-transparent" />
+          <div className="absolute top-0 left-0 w-[2px] h-full bg-gradient-to-b from-red-500/80 to-transparent" />
+        </div>
+        {/* Top-Right */}
+        <div className="absolute top-0 right-0 w-4 h-4 pointer-events-none">
+          <div className="absolute top-0 right-0 w-full h-[2px] bg-gradient-to-l from-red-500/80 to-transparent" />
+          <div className="absolute top-0 right-0 w-[2px] h-full bg-gradient-to-b from-red-500/80 to-transparent" />
+        </div>
+        {/* Bottom-Left */}
+        <div className="absolute bottom-0 left-0 w-4 h-4 pointer-events-none">
+          <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-red-500/80 to-transparent" />
+          <div className="absolute bottom-0 left-0 w-[2px] h-full bg-gradient-to-t from-red-500/80 to-transparent" />
+        </div>
+        {/* Bottom-Right */}
+        <div className="absolute bottom-0 right-0 w-4 h-4 pointer-events-none">
+          <div className="absolute bottom-0 right-0 w-full h-[2px] bg-gradient-to-l from-red-500/80 to-transparent" />
+          <div className="absolute bottom-0 right-0 w-[2px] h-full bg-gradient-to-t from-red-500/80 to-transparent" />
+        </div>
+        
+        {/* Scan Line Animation */}
+        <motion.div
+          animate={{
+            top: ['0%', '100%', '0%'],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: 'linear',
+          }}
+          className="absolute left-0 right-0 h-px pointer-events-none"
+          style={{
+            background: 'linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.5), transparent)',
+          }}
+        />
+        
+        {/* Content */}
+        <div className="relative z-10">
+          {children}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// =============================================================================
+// Trust Indicator Component (Glowing Value Propositions with HUD Effect)
 // =============================================================================
 
 interface TrustIndicatorProps {
@@ -795,38 +1104,41 @@ interface TrustIndicatorProps {
 function TrustIndicator({ icon, text, delay = 0 }: TrustIndicatorProps) {
   return (
     <motion.div 
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.5, delay }}
+      variants={hudVariants}
+      initial="hidden"
+      animate="visible"
+      custom={delay}
+      transition={{ delay }}
       className="flex items-center gap-4 group"
     >
-      {/* Glowing Icon Container */}
+      {/* Glowing Icon Container with HUD styling */}
       <div 
-        className="w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+        className="w-11 h-11 flex items-center justify-center transition-all duration-300 group-hover:scale-110"
         style={{
-          background: 'linear-gradient(135deg, rgba(220, 38, 38, 0.2) 0%, rgba(220, 38, 38, 0.1) 100%)',
-          border: '1px solid rgba(220, 38, 38, 0.3)',
-          boxShadow: '0 0 20px rgba(220, 38, 38, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+          background: 'linear-gradient(135deg, rgba(220, 38, 38, 0.25) 0%, rgba(220, 38, 38, 0.1) 100%)',
+          border: '1px solid rgba(220, 38, 38, 0.4)',
+          boxShadow: '0 0 20px rgba(220, 38, 38, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+          clipPath: 'polygon(0 4px, 4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px))',
         }}
       >
         <div 
           className="text-red-400"
           style={{
-            filter: 'drop-shadow(0 0 6px rgba(220, 38, 38, 0.8))',
+            filter: 'drop-shadow(0 0 8px rgba(220, 38, 38, 0.9))',
           }}
         >
           {icon}
         </div>
       </div>
       
-      {/* Glowing Text */}
+      {/* Text with DecryptionText Effect */}
       <span 
         className="text-white font-medium text-base tracking-wide"
         style={{ 
           textShadow: '0 0 20px rgba(255, 255, 255, 0.25), 0 0 40px rgba(255, 255, 255, 0.1)',
         }}
       >
-        {text}
+        <DecryptionText text={text} delay={delay * 1000 + 200} duration={400} />
       </span>
     </motion.div>
   );
