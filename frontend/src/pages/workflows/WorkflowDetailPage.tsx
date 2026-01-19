@@ -830,7 +830,6 @@ export function WorkflowDetailPage() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm font-mono text-red-400 hover:text-red-300 hover:underline transition-colors"
-                        data-demo-target="explorer-link"
                       >
                         {truncateHash(workflow.deployHash)}
                       </a>
@@ -1014,7 +1013,6 @@ export function WorkflowDetailPage() {
                     onClick={() => approveWorkflowMutation.mutate(approvalComment)}
                     disabled={approveWorkflowMutation.isPending || rejectWorkflowMutation.isPending}
                     className="flex-1 btn-dark-primary flex items-center justify-center gap-2"
-                    data-demo-target="approve-btn"
                   >
                     {approveWorkflowMutation.isPending ? (
                       <>
@@ -1038,7 +1036,6 @@ export function WorkflowDetailPage() {
                     }}
                     disabled={approveWorkflowMutation.isPending || rejectWorkflowMutation.isPending}
                     className="flex-1 btn-dark-danger flex items-center justify-center gap-2"
-                    data-demo-target="reject-btn"
                   >
                     {rejectWorkflowMutation.isPending ? (
                       <>

@@ -17,7 +17,6 @@ interface ForgotPasswordForm {
 export function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [resetUrl, setResetUrl] = useState<string | null>(null);
 
   const {
     register,
@@ -28,18 +27,13 @@ export function ForgotPasswordPage() {
   const onSubmit = async (data: ForgotPasswordForm) => {
     setIsLoading(true);
     try {
-      const response = await api.post<{
+      await api.post<{
         success: boolean;
         message: string;
-        _demo?: { resetUrl: string };
       }>('/auth/forgot-password', data);
       
       setIsSubmitted(true);
       toast.success('Check your email for the reset link');
-      
-      if (response.data._demo?.resetUrl) {
-        setResetUrl(response.data._demo.resetUrl);
-      }
     } catch (error) {
       console.error('Forgot password failed:', error);
       toast.error('Failed to send reset email');
@@ -55,22 +49,6 @@ export function ForgotPasswordPage() {
           <p className="text-gray-400 text-center">
             If an account exists with that email, we've sent a password reset link.
           </p>
-
-          {/* Demo mode: Show direct reset link */}
-          {resetUrl && (
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
-              <p className="text-sm font-medium text-yellow-400">Demo Mode</p>
-              <p className="text-sm text-yellow-400/70 mt-1">
-                In production, this link would be sent via email.
-              </p>
-              <Link
-                to={resetUrl}
-                className="mt-2 inline-block text-sm font-medium text-red-400 hover:text-red-300"
-              >
-                Click here to reset your password →
-              </Link>
-            </div>
-          )}
 
           <div className="pt-4 text-center">
             <Link

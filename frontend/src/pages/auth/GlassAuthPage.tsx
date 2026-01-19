@@ -37,7 +37,6 @@ const hudVariants = {
 import { 
   EyeIcon, 
   EyeSlashIcon, 
-  BeakerIcon,
   DocumentCheckIcon,
   BoltIcon,
   LinkIcon,
@@ -46,10 +45,6 @@ import { useAuthStore } from '../../stores/auth';
 import { useWalletStore } from '../../stores/wallet';
 import { api } from '../../lib/api';
 import { ParticleBackground } from '../../components/auth/ParticleBackground';
-import { DEMO_ENABLED, useDemoContext } from '../../demo';
-
-// Debug: Log DEMO_ENABLED value on module load
-console.log('[GlassAuthPage] Module loaded - DEMO_ENABLED:', DEMO_ENABLED, 'Raw env:', import.meta.env.VITE_DEMO_MODE);
 
 // =============================================================================
 // Types
@@ -747,9 +742,6 @@ export function GlassAuthPage() {
                   isLoading={isWalletLoading}
                   onClick={handleWalletSignIn}
                 />
-
-                {/* === Demo Mode Button (TESTNET ONLY) === */}
-                {DEMO_ENABLED && <DemoButton />}
 
                 {/* === Footer Links === */}
                 <div className="mt-6 text-center">
@@ -1687,75 +1679,6 @@ function WalletButton({ isLoading, onClick }: WalletButtonProps) {
           </>
         )}
       </motion.button>
-    </div>
-  );
-}
-
-// =============================================================================
-// Demo Button Component (TESTNET ONLY)
-// =============================================================================
-
-function DemoButton() {
-  const demo = useDemoContext();
-
-  // Log for debugging (can be removed later)
-  console.log('[Demo] DEMO_ENABLED:', DEMO_ENABLED, 'env value:', import.meta.env.VITE_DEMO_MODE);
-  console.log('[Demo] Demo context available:', !!demo);
-
-  // Show button even if context is initializing - it will work once clicked
-  // The button should be visible as long as DEMO_ENABLED is true
-  
-  const handleStartDemo = () => {
-    if (demo) {
-      demo.startDemo();
-    } else {
-      console.error('[Demo] Context not available - ensure ConditionalDemoProvider wraps the app');
-    }
-  };
-
-  return (
-    <div className="mt-6">
-      {/* Divider */}
-      <div className="relative my-4">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-white/10" />
-        </div>
-        <div className="relative flex justify-center text-sm">
-          <span className="px-3 text-amber-500/80 bg-transparent text-xs uppercase tracking-wider">
-            Testnet Demo
-          </span>
-        </div>
-      </div>
-
-      {/* Demo Button */}
-      <motion.button
-        type="button"
-        onClick={handleStartDemo}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        className="w-full py-3.5 px-6 rounded-full font-semibold text-white transition-all duration-300 flex items-center justify-center gap-3 uppercase tracking-wider text-sm"
-        style={{
-          background: 'linear-gradient(135deg, rgba(220, 38, 38, 0.2) 0%, rgba(180, 83, 9, 0.2) 100%)',
-          border: '1px solid rgba(220, 38, 38, 0.4)',
-          boxShadow: `
-            0 0 20px rgba(220, 38, 38, 0.2),
-            0 4px 15px rgba(0, 0, 0, 0.3),
-            inset 0 1px 0 rgba(255, 255, 255, 0.1)
-          `,
-        }}
-      >
-        <BeakerIcon className="h-5 w-5 text-red-400" />
-        <span>Take Us On A Demo</span>
-        <span className="relative flex h-2 w-2 ml-1">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-        </span>
-      </motion.button>
-
-      <p className="mt-2.5 text-xs text-center text-gray-500">
-        Experience the full workflow with{' '}
-        <span className="text-amber-500/80">automated testnet accounts</span>
-      </p>
     </div>
   );
 }

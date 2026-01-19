@@ -24,22 +24,19 @@ import { useAuthStore } from '../stores/auth';
 import { useWalletStore } from '../stores/wallet';
 import { cn, truncateHash } from '../lib/utils';
 
-// Demo Mode (TESTNET ONLY - safe to remove for mainnet)
-import { DEMO_ENABLED, useDemoContext, DemoRoleBadge } from '../demo';
-
 // Navigation items - Users is only shown to ADMIN
 // Templates only for REQUESTER, MANAGER, ADMIN
 const baseNavigation = [
-  { name: 'Dashboard', href: '/app/dashboard', icon: HomeIcon, roles: null, demoTarget: 'nav-dashboard' },
-  { name: 'Workflows', href: '/app/workflows', icon: DocumentDuplicateIcon, roles: null, demoTarget: 'nav-workflows' },
-  { name: 'Templates', href: '/app/templates', icon: ClipboardDocumentListIcon, roles: ['REQUESTER', 'MANAGER', 'ADMIN'], demoTarget: 'nav-templates' },
-  { name: 'Audit Log', href: '/app/audit', icon: ShieldCheckIcon, roles: ['ADMIN', 'AUDITOR', 'MANAGER'], demoTarget: 'nav-audit' },
-  { name: 'Wallet', href: '/app/wallet', icon: WalletIcon, roles: null, demoTarget: 'nav-wallet' },
-  { name: 'Settings', href: '/app/settings', icon: Cog6ToothIcon, roles: null, demoTarget: 'nav-settings' },
+  { name: 'Dashboard', href: '/app/dashboard', icon: HomeIcon, roles: null },
+  { name: 'Workflows', href: '/app/workflows', icon: DocumentDuplicateIcon, roles: null },
+  { name: 'Templates', href: '/app/templates', icon: ClipboardDocumentListIcon, roles: ['REQUESTER', 'MANAGER', 'ADMIN'] },
+  { name: 'Audit Log', href: '/app/audit', icon: ShieldCheckIcon, roles: ['ADMIN', 'AUDITOR', 'MANAGER'] },
+  { name: 'Wallet', href: '/app/wallet', icon: WalletIcon, roles: null },
+  { name: 'Settings', href: '/app/settings', icon: Cog6ToothIcon, roles: null },
 ];
 
 const adminNavigation = [
-  { name: 'Users', href: '/app/users', icon: UsersIcon, roles: ['ADMIN'], demoTarget: 'nav-users' },
+  { name: 'Users', href: '/app/users', icon: UsersIcon, roles: ['ADMIN'] },
 ];
 
 export function DashboardLayout() {
@@ -48,11 +45,6 @@ export function DashboardLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { publicKey, isConnected, isConnecting, balance, connect } = useWalletStore();
-  
-  // Demo mode context (TESTNET ONLY) - always call hook, check flag inside
-  const demo = useDemoContext();
-  const isDemoActive = DEMO_ENABLED && demo?.state.isActive;
-  const demoRole = demo?.state.currentRole ?? null;
 
   // Build navigation based on user roles
   const userRoles = user?.roles || [];
@@ -83,10 +75,6 @@ export function DashboardLayout() {
 
   return (
     <div className="min-h-screen bg-[#0A0A0B] relative">
-      {/* Demo Role Badge (TESTNET ONLY) - Shows when demo is active */}
-      {DEMO_ENABLED && isDemoActive && (
-        <DemoRoleBadge role={demoRole} />
-      )}
 
       {/* Atmospheric Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -178,7 +166,6 @@ export function DashboardLayout() {
                               <Link
                                 to={item.href}
                                 onClick={() => setSidebarOpen(false)}
-                                data-demo-target={item.demoTarget}
                                 className={cn(
                                   isActivePath(item.href)
                                     ? 'sidebar-nav-item-active'
@@ -244,7 +231,6 @@ export function DashboardLayout() {
                     <li key={item.name}>
                       <Link
                         to={item.href}
-                        data-demo-target={item.demoTarget}
                         className={cn(
                           isActivePath(item.href)
                             ? 'sidebar-nav-item-active'

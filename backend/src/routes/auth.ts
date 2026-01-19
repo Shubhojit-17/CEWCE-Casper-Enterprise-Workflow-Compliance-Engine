@@ -211,107 +211,6 @@ authRouter.post('/login', async (req: Request, res: Response, next: NextFunction
 });
 
 // =============================================================================
-// Demo Authentication (TESTNET ONLY)
-// =============================================================================
-
-/**
- * Demo mode authentication - auto-login as a specific role for guided demos.
- * 
- * SECURITY:
- * - Only enabled when DEMO_MODE=true environment variable is set
- * - Only works on testnet deployments
- * - Uses pre-configured demo accounts
- * - Credentials are NEVER exposed to the frontend
- * - Returns real JWT tokens for actual demo user accounts
- */
-const demoRoleSchema = z.object({
-  role: z.enum(['requester', 'user', 'approver']),
-});
-
-// Demo account email mapping (credentials stored securely in DB, not exposed)
-const DEMO_ACCOUNTS: Record<string, string> = {
-  requester: 'requester@cewce.io',
-  user: 'user1@cewce.io',
-  approver: 'approver@cewce.io',
-};
-
-authRouter.post('/demo', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    // CRITICAL: Only allow demo auth when DEMO_MODE is explicitly enabled
-    if (process.env.DEMO_MODE !== 'true') {
-      throw createError('Demo mode is not enabled', 404, 'NOT_FOUND');
-    }
-
-    const { role } = demoRoleSchema.parse(req.body);
-    const email = DEMO_ACCOUNTS[role];
-
-    if (!email) {
-      throw createError('Invalid demo role', 400, 'INVALID_ROLE');
-    }
-
-    // Find the demo user by email
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: { roles: { include: { role: true } } },
-    });
-
-    if (!user) {
-      logger.error({ email, role }, 'Demo account not found - please run seed script');
-      throw createError(
-        `Demo account for ${role} not found. Please ensure demo accounts are seeded.`,
-        404,
-        'DEMO_ACCOUNT_NOT_FOUND'
-      );
-    }
-
-    // Check if user is active
-    if (!user.isActive) {
-      throw createError('Demo account is disabled', 403, 'ACCOUNT_DISABLED');
-    }
-
-    // Generate JWT token (same as regular login)
-    const token = generateToken({
-      userId: user.id,
-      publicKey: user.publicKey || '',
-      roles: user.roles.map(r => r.role.name),
-    });
-
-    // Update last login
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() },
-    });
-
-    logger.info({ userId: user.id, email, demoRole: role }, 'Demo user logged in');
-
-    res.json({
-      success: true,
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          displayName: user.displayName,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          publicKey: user.publicKey,
-          accountHash: user.accountHash,
-          avatar: user.avatar,
-          isActive: user.isActive,
-          emailVerified: user.emailVerified,
-          createdAt: user.createdAt.toISOString(),
-          updatedAt: user.updatedAt.toISOString(),
-          lastLoginAt: user.lastLoginAt?.toISOString() || null,
-          roles: user.roles.map(r => r.role.name),
-        },
-        token,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// =============================================================================
 // Wallet Authentication Routes
 // =============================================================================
 
@@ -632,18 +531,12 @@ authRouter.post('/forgot-password', async (req: Request, res: Response, next: Ne
     });
 
     // In production: Send email with reset link
-    // For hackathon: Log the token for demo purposes
-    logger.info({ email, resetToken }, 'Password reset token generated (demo mode - token logged)');
+    // Note: Email service integration pending
+    logger.info({ email, resetToken }, 'Password reset token generated');
 
-    // For hackathon demo: Include token in response (REMOVE IN PRODUCTION)
     res.json({
       success: true,
       message: 'If an account exists with this email, a reset link has been sent.',
-      // Demo only - remove in production:
-      _demo: {
-        resetToken,
-        resetUrl: `/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`,
-      },
     });
   } catch (error) {
     next(error);

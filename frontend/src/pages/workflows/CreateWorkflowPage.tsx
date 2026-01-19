@@ -203,7 +203,6 @@ export function CreateWorkflowPage() {
                   className="input-dark"
                   value={selectedCustomerId || ''}
                   onChange={(e) => setSelectedCustomerId(e.target.value || null)}
-                  data-demo-target="customer-select"
                 >
                   <option value="">No customer assignment (proceed directly)</option>
                   {customers.map((customer) => (
