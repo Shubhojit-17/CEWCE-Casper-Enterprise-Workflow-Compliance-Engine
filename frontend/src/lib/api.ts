@@ -7,6 +7,12 @@ import toast from 'react-hot-toast';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
+// Debug: Log API URL in development/staging
+if (import.meta.env.DEV || window.location.hostname !== 'localhost') {
+  console.log('[API] Base URL:', API_BASE_URL);
+  console.log('[API] VITE_API_URL env:', import.meta.env.VITE_API_URL);
+}
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
