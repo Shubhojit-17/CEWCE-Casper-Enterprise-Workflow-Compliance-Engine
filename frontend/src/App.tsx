@@ -26,6 +26,9 @@ import VerifyCompliancePage from './pages/compliance/VerifyCompliancePage';
 // Main Landing Page (scroll-driven narrative UX)
 import { LandingPage } from './pages/LandingPage';
 
+// Architecture of Trust - Storytelling page for Casper community
+import { ArchitectureOfTrustPage } from './pages/ArchitectureOfTrustPage';
+
 // Protected Route Wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuthStore();
@@ -112,6 +115,10 @@ function App() {
         {/* Main Landing Page (public, no auth required) - Default route */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/landing" element={<LandingPage />} />
+
+        {/* Architecture of Trust - Storytelling page (public, no auth required) */}
+        <Route path="/architecture-of-trust" element={<ArchitectureOfTrustPage />} />
+        <Route path="/how-cewce-works" element={<ArchitectureOfTrustPage />} />
 
         {/* Protected Routes */}
         <Route

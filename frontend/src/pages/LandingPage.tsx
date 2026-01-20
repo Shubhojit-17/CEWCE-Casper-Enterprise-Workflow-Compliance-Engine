@@ -71,6 +71,12 @@ function LandingHeader() {
         {/* Navigation Buttons - WIRED TO REAL ROUTES */}
         <div className="flex items-center gap-4">
           <button
+            className="px-4 py-2 text-sm text-cyan-400/80 hover:text-cyan-400 transition-colors duration-200 font-medium hidden sm:block"
+            onClick={() => navigate('/architecture-of-trust')}
+          >
+            How It Works
+          </button>
+          <button
             className="px-4 py-2 text-sm text-white/70 hover:text-white transition-colors duration-200 font-medium"
             onClick={() => navigate('/auth/login')}
           >
